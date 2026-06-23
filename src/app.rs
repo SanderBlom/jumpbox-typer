@@ -464,18 +464,20 @@ fn show_about_window(parent: &ApplicationWindow) {
         .application_name("Jumpbox Typer")
         .application_icon("dev.sander.jumpbox_typer")
         .version(env!("CARGO_PKG_VERSION"))
-        .developer_name("Sander Blom")
+        .developer_name("Sander Blomvagnes")
         .comments("Jumpbox Typer makes remote-session text entry less painful across locked-down jump hosts such as AVD, Citrix, Horizon, and similar environments. It combines existing tools for keystroke injection and OCR. If a proper zero-trust setup like Boundary, Tailscale, or Twingate were already in place, this app would probably not need to exist.")
-        .copyright("Copyright © 2026 Sander Blom")
+        .copyright("Copyright © 2026 Sander Blomvagnes")
         .license_type(gtk::License::MitX11)
         .website("https://github.com/SanderBlom/jumpbox-typer")
         .issue_url("https://github.com/SanderBlom/jumpbox-typer/issues")
-        .developers(["Sander Blom"])
+        .developers(["Sander Blomvagnes", "sanderblom (GitHub)"])
         .build();
 
     about.set_translator_credits(
-        "All credit goes to the maintainers of the underlying typing and OCR tools.",
+        "Credit to the maintainers of the underlying typing and OCR tools, and to gpt-5.4-mini for help shaping the implementation.",
     );
+    about.add_link("ydotool", "https://github.com/ReimuNotMoe/ydotool");
+    about.add_link("Tesseract OCR", "https://github.com/tesseract-ocr/tesseract");
 
     about.present();
 }

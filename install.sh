@@ -10,10 +10,22 @@ METADATA_DIR="$PREFIX/share/metainfo"
 mkdir -p "$BIN_DIR" "$ICON_DIR" "$APP_DIR" "$METADATA_DIR"
 
 cargo build --release
-cp target/release/jumpbox-typer "$BIN_DIR/jumpbox-typer"
-cp assets/jumpbox-typer.svg "$ICON_DIR/dev.sander.jumpbox_typer.svg"
-cp desktop/dev.sander.jumpbox_typer.desktop "$APP_DIR/dev.sander.jumpbox_typer.desktop"
-cp desktop/dev.sander.jumpbox_typer.metainfo.xml "$METADATA_DIR/dev.sander.jumpbox_typer.metainfo.xml"
+
+install_if_changed() {
+  src="$1"
+  dst="$2"
+
+  if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+    return 0
+  fi
+
+  install -m 0644 "$src" "$dst"
+}
+
+install -m 0755 target/release/jumpbox-typer "$BIN_DIR/jumpbox-typer"
+install_if_changed assets/jumpbox-typer.svg "$ICON_DIR/dev.sander.jumpbox_typer.svg"
+install_if_changed desktop/dev.sander.jumpbox_typer.desktop "$APP_DIR/dev.sander.jumpbox_typer.desktop"
+install_if_changed desktop/dev.sander.jumpbox_typer.metainfo.xml "$METADATA_DIR/dev.sander.jumpbox_typer.metainfo.xml"
 
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
   gtk-update-icon-cache -f -t "$PREFIX/share/icons/hicolor" >/dev/null 2>&1 || true
