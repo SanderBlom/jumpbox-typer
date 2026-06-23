@@ -80,12 +80,11 @@ The build script writes `dist/jumpbox-typer-linux-amd64`.
 3. Paste your script, command, or text into the textbox.
 4. Set **Start delay seconds** so you have time to focus the remote session.
 5. Set **Typing speed chars/sec**. Start slower for remote consoles that drop characters.
-6. Optionally set **Start/stop keybind**. Examples: `F8`, `Ctrl+Alt+S`, `Shift+F9`.
-7. Optionally copy an image to your clipboard, then click **Extract clipboard image text** to insert recognized text into the textbox.
-8. Click **Start typing** or press the configured keybind while the app is focused.
-9. Focus the target AVD, jumpbox, terminal, or remote console before the countdown ends.
+6. Optionally copy an image to your clipboard, then click **Extract clipboard image text** to insert recognized text into the textbox.
+7. Click **Start typing**.
+8. Focus the target AVD, jumpbox, terminal, or remote console before the countdown ends.
 
-The configured keybind triggers **Start typing** when idle and **Stop** while typing, as long as the app is focused. If another window is focused, stop the app from the terminal with `Ctrl+C`.
+Use **Stop** from the app window if you need to cancel a running job.
 
 ## Safety
 

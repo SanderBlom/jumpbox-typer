@@ -1,9 +1,8 @@
-use crate::keybind::keybind_matches;
 use crate::ocr::{run_ocr_file, temporary_ocr_image_path};
 use crate::system_check::{ensure_ydotool_ready, queue_system_check, require_command};
 use crate::types::{
-    AppState, KeyboardLayout, StartConfig, SystemCheckItem, UiEvent, DEFAULT_CHARS_PER_SECOND,
-    DEFAULT_DELAY_SECONDS, DEFAULT_ENTER_PAUSE_SECONDS, DEFAULT_TOGGLE_KEYBIND,
+    AppState, KeyboardLayout, StartConfig, SystemCheck, SystemCheckItem, UiEvent,
+    DEFAULT_CHARS_PER_SECOND, DEFAULT_DELAY_SECONDS, DEFAULT_ENTER_PAUSE_SECONDS,
 };
 use crate::typing::{progress_fraction, run_typing};
 use adw::prelude::*;
@@ -13,8 +12,7 @@ use gtk::{
     Align, Box as GtkBox, Button, DropDown, Entry, Image, Label, Orientation, ProgressBar,
     ScrolledWindow, TextView, WrapMode,
 };
-use gtk::EventControllerKey;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -64,10 +62,6 @@ pub fn build_ui(app: &Application) {
     let enter_pause = numeric_entry(&format!("{DEFAULT_ENTER_PAUSE_SECONDS:.2}"));
     let keyboard_layout = DropDown::from_strings(&["Norwegian", "US"]);
     keyboard_layout.set_selected(load_keyboard_layout_index());
-    let toggle_keybind = Entry::new();
-    toggle_keybind.set_text(DEFAULT_TOGGLE_KEYBIND);
-    toggle_keybind.set_width_chars(14);
-    toggle_keybind.set_tooltip_text(Some("Examples: F8, Ctrl+Alt+S, Shift+F9"));
 
     let start = Button::with_label("Start typing");
     start.add_css_class("suggested-action");
@@ -77,7 +71,6 @@ pub fn build_ui(app: &Application) {
     let extract_clipboard_image = Button::with_label("Extract clipboard image text");
     extract_clipboard_image.set_sensitive(false);
     let check_system = Button::with_label("Check system");
-    check_system.set_sensitive(false);
 
     let status = Label::new(Some("Ready"));
     status.set_halign(Align::Start);
@@ -106,11 +99,6 @@ pub fn build_ui(app: &Application) {
         "Choose the layout used for special characters",
         &keyboard_layout,
     ));
-    settings.add(&action_row(
-        "Start/Stop Keybind",
-        "Works while this app window is focused",
-        &toggle_keybind,
-    ));
 
     let actions = GtkBox::new(Orientation::Horizontal, 6);
     actions.append(&start);
@@ -124,27 +112,7 @@ pub fn build_ui(app: &Application) {
         .build();
     actions_group.add(&actions);
 
-    let readiness_header = Label::new(Some("System checks"));
-    readiness_header.add_css_class("heading");
-    readiness_header.set_halign(Align::Start);
-
-    let readiness_summary = Label::new(Some("Checking system requirements"));
-    readiness_summary.set_halign(Align::Start);
-    readiness_summary.set_wrap(true);
-
-    let system_rows = GtkBox::new(Orientation::Vertical, 0);
-    system_rows.set_visible(false);
-
-    let system_box = GtkBox::new(Orientation::Vertical, 6);
-    system_box.append(&readiness_header);
-    system_box.append(&readiness_summary);
-
-    let system_section = GtkBox::new(Orientation::Vertical, 6);
-    system_section.append(&system_box);
-    system_section.append(&system_rows);
-
     let controls = GtkBox::new(Orientation::Vertical, 10);
-    controls.append(&system_section);
     controls.append(&settings);
     controls.append(&actions_group);
 
@@ -172,6 +140,8 @@ pub fn build_ui(app: &Application) {
         can_ocr: false,
     }));
     let (tx, rx) = mpsc::channel::<UiEvent>();
+    let latest_check: Rc<RefCell<Option<SystemCheck>>> = Rc::new(RefCell::new(None));
+    let show_check_popup_on_finish = Rc::new(Cell::new(false));
 
     {
         let keyboard_layout = keyboard_layout.clone();
@@ -332,41 +302,16 @@ pub fn build_ui(app: &Application) {
         let tx = tx.clone();
         let status = status.clone();
         let check_system_for_callback = check_system.clone();
+        let latest_check = Rc::clone(&latest_check);
+        let show_check_popup_on_finish = Rc::clone(&show_check_popup_on_finish);
 
         check_system.connect_clicked(move |_| {
             status.set_text("Checking system requirements...");
             check_system_for_callback.set_sensitive(false);
+            latest_check.borrow_mut().take();
+            show_check_popup_on_finish.set(true);
             queue_system_check(tx.clone());
         });
-    }
-
-    {
-        let toggle_keybind = toggle_keybind.clone();
-        let start = start.clone();
-        let stop = stop.clone();
-        let status = status.clone();
-        let controller = EventControllerKey::new();
-
-        controller.connect_key_pressed(move |_, key, _, state| {
-            let configured = toggle_keybind.text();
-            match keybind_matches(&configured, key, state) {
-                Ok(true) => {
-                    if stop.is_sensitive() {
-                        stop.emit_clicked();
-                    } else if start.is_sensitive() {
-                        start.emit_clicked();
-                    }
-                    glib::Propagation::Stop
-                }
-                Ok(false) => glib::Propagation::Proceed,
-                Err(message) => {
-                    status.set_text(&message);
-                    glib::Propagation::Proceed
-                }
-            }
-        });
-
-        window.add_controller(controller);
     }
 
     {
@@ -377,9 +322,9 @@ pub fn build_ui(app: &Application) {
         let check_system = check_system.clone();
         let text_view = text_view.clone();
         let status = status.clone();
-        let system_rows = system_rows.clone();
-        let readiness_summary = readiness_summary.clone();
         let progress = progress.clone();
+        let latest_check = Rc::clone(&latest_check);
+        let window = window.clone();
 
         glib::timeout_add_local(Duration::from_millis(100), move || {
             while let Ok(event) = rx.try_recv() {
@@ -425,25 +370,24 @@ pub fn build_ui(app: &Application) {
                         extract_clipboard_image.set_sensitive(state.borrow().can_ocr);
                     }
                     UiEvent::SystemCheckFinished(check) => {
+                        let should_show_popup = show_check_popup_on_finish.replace(false);
                         {
                             let mut state = state.borrow_mut();
                             state.can_type = check.can_type;
                             state.can_ocr = check.can_ocr;
                         }
-                        let has_failures = check.items.iter().any(|item| !item.ok);
-                        system_rows.set_visible(has_failures);
-                        if has_failures {
-                            readiness_summary.set_text("System checks failed. Fix the items below before starting.");
-                        }
-                        rebuild_check_rows(&system_rows, &check.items);
+                        latest_check.borrow_mut().replace(check.clone());
                         start.set_sensitive(check.can_type && state.borrow().cancel.is_none());
                         extract_clipboard_image.set_sensitive(check.can_ocr);
                         check_system.set_sensitive(true);
-                        status.set_text(if has_failures {
-                            "Fix system checks before starting."
-                        } else {
+                        status.set_text(if check.can_type {
                             "Ready to type."
+                        } else {
+                            "Some system checks failed."
                         });
+                        if should_show_popup {
+                            show_system_check_popup(&window, latest_check.borrow().clone());
+                        }
                     }
                 }
             }
@@ -467,36 +411,93 @@ fn action_row(title: &str, subtitle: &str, child: &impl IsA<gtk::Widget>) -> adw
     row
 }
 
+fn show_system_check_popup(parent: &ApplicationWindow, check: Option<SystemCheck>) {
+    let popup = gtk::Window::builder()
+        .transient_for(parent)
+        .modal(true)
+        .title("System checks")
+        .default_width(640)
+        .default_height(420)
+        .build();
+
+    let body = GtkBox::new(Orientation::Vertical, 12);
+    body.set_margin_top(16);
+    body.set_margin_bottom(16);
+    body.set_margin_start(16);
+    body.set_margin_end(16);
+
+    let summary = Label::new(None);
+    summary.set_wrap(true);
+    summary.set_halign(Align::Start);
+    body.append(&summary);
+
+    let rows = GtkBox::new(Orientation::Vertical, 8);
+    body.append(&rows);
+
+    if let Some(check) = check {
+        let has_failures = check.items.iter().any(|item| !item.ok);
+        summary.set_text(if has_failures {
+            "Fix the red items before starting."
+        } else {
+            "Everything looks ready."
+        });
+        rebuild_check_rows(&rows, &check.items);
+    } else {
+        summary.set_text("Running system checks...");
+    }
+
+    let close = Button::with_label("Close");
+    let popup_clone = popup.clone();
+    close.connect_clicked(move |_| popup_clone.close());
+    body.append(&close);
+
+    popup.set_child(Some(&body));
+    popup.present();
+}
+
 fn rebuild_check_rows(group: &GtkBox, items: &[SystemCheckItem]) {
     while let Some(child) = group.first_child() {
         group.remove(&child);
     }
 
     for item in items {
-        let icon_name = if item.ok {
-            "emblem-ok-symbolic"
-        } else {
-            "dialog-error-symbolic"
-        };
-        let row = adw::ActionRow::builder()
-            .title(&item.title)
-            .subtitle(&item.detail)
-            .subtitle_lines(3)
-            .build();
-
-        let icon = Image::from_icon_name(icon_name);
-        icon.set_pixel_size(16);
-        icon.add_css_class(if item.ok { "success" } else { "error" });
-        row.add_prefix(&icon);
-
-        if item.ok {
-            row.add_css_class("success");
-        } else {
-            row.add_css_class("error");
-        }
-
-        group.append(&row);
+        group.append(&system_check_row(item));
     }
+}
+
+fn system_check_row(item: &SystemCheckItem) -> GtkBox {
+    let row = GtkBox::new(Orientation::Horizontal, 12);
+    row.add_css_class("card");
+    row.set_margin_top(4);
+    row.set_margin_bottom(4);
+    row.set_margin_start(4);
+    row.set_margin_end(4);
+
+    let icon_name = if item.ok {
+        "emblem-ok-symbolic"
+    } else {
+        "dialog-error-symbolic"
+    };
+
+    let icon = Image::from_icon_name(icon_name);
+    icon.set_pixel_size(18);
+    icon.add_css_class(if item.ok { "success" } else { "error" });
+
+    let text = GtkBox::new(Orientation::Vertical, 2);
+    let title = Label::new(Some(&item.title));
+    title.set_halign(Align::Start);
+    title.add_css_class("heading");
+    let detail = Label::new(Some(&item.detail));
+    detail.set_halign(Align::Start);
+    detail.set_wrap(true);
+    detail.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+
+    text.append(&title);
+    text.append(&detail);
+
+    row.append(&icon);
+    row.append(&text);
+    row
 }
 
 fn numeric_entry(value: &str) -> Entry {
