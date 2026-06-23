@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Jumpbox Typer icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1720"/>
+      <stop offset="100%" stop-color="#172433"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#25d0c6"/>
+      <stop offset="100%" stop-color="#7ff0df"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6a84a"/>
+      <stop offset="100%" stop-color="#ffd27a"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bg)"/>
+  <rect x="70" y="92" width="372" height="272" rx="42" fill="#0b1118" stroke="#273244" stroke-width="10"/>
+  <rect x="98" y="120" width="140" height="20" rx="10" fill="#243041"/>
+  <rect x="98" y="158" width="220" height="20" rx="10" fill="#1e2836"/>
+  <rect x="98" y="196" width="180" height="20" rx="10" fill="#1e2836"/>
+  <path d="M132 258 L170 296 L132 334" fill="none" stroke="url(#accent)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="188" y="284" width="150" height="20" rx="10" fill="url(#warm)"/>
+  <rect x="86" y="384" width="340" height="58" rx="20" fill="#101823" stroke="#273244" stroke-width="8"/>
+  <rect x="110" y="404" width="48" height="18" rx="9" fill="#2b3748"/>
+  <rect x="168" y="404" width="48" height="18" rx="9" fill="#2b3748"/>
+  <rect x="226" y="404" width="48" height="18" rx="9" fill="#2b3748"/>
+  <rect x="284" y="404" width="48" height="18" rx="9" fill="#2b3748"/>
+  <circle cx="382" cy="413" r="16" fill="url(#accent)"/>
+  <path d="M376 413 h12" stroke="#0b1118" stroke-width="6" stroke-linecap="round"/>
+</svg>

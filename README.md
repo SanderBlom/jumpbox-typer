@@ -73,6 +73,27 @@ Or run:
 
 The build script writes `dist/jumpbox-typer-linux-amd64`.
 
+## Install
+
+Install into your user prefix:
+
+```bash
+./install.sh
+```
+
+Or install to a custom prefix:
+
+```bash
+PREFIX=/usr/local ./install.sh
+```
+
+The installer copies:
+
+- the binary to `bin/jumpbox-typer`
+- the app icon to `share/icons/hicolor/scalable/apps/dev.sander.jumpbox_typer.svg`
+- the desktop entry to `share/applications/dev.sander.jumpbox_typer.desktop`
+- the AppStream metadata to `share/metainfo/dev.sander.jumpbox_typer.metainfo.xml`
+
 ## Usage
 
 1. Start `jumpbox-typer`.

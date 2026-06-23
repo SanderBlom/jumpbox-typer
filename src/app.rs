@@ -16,6 +16,7 @@ use std::cell::{Cell, RefCell};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
@@ -30,6 +31,7 @@ pub fn build_ui(app: &Application) {
         .default_width(920)
         .default_height(660)
         .build();
+    window.set_icon_name(Some("dev.sander.jumpbox_typer"));
 
     let header_bar = HeaderBar::new();
     let toolbar_view = ToolbarView::new();
@@ -81,7 +83,12 @@ pub fn build_ui(app: &Application) {
         "Jumpbox Typer",
         "Type pasted or OCR text into focused remote sessions",
     );
-    header_bar.set_title_widget(Some(&title));
+    let title_widget = GtkBox::new(Orientation::Horizontal, 10);
+    let app_icon = Image::from_file(app_icon_path());
+    app_icon.set_pixel_size(28);
+    title_widget.append(&app_icon);
+    title_widget.append(&title);
+    header_bar.set_title_widget(Some(&title_widget));
 
     let settings = adw::PreferencesGroup::builder()
         .title("Typing Settings")
@@ -100,7 +107,8 @@ pub fn build_ui(app: &Application) {
         &keyboard_layout,
     ));
 
-    let actions = GtkBox::new(Orientation::Horizontal, 6);
+    let actions = GtkBox::new(Orientation::Horizontal, 8);
+    actions.set_hexpand(true);
     actions.append(&start);
     actions.append(&stop);
     actions.append(&extract_clipboard_image);
@@ -409,6 +417,19 @@ fn action_row(title: &str, subtitle: &str, child: &impl IsA<gtk::Widget>) -> adw
         .build();
     row.add_suffix(child);
     row
+}
+
+fn app_icon_path() -> PathBuf {
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(dir) = exe_path.parent() {
+            let candidate = dir.join("assets/jumpbox-typer.svg");
+            if candidate.exists() {
+                return candidate;
+            }
+        }
+    }
+
+    PathBuf::from("assets/jumpbox-typer.svg")
 }
 
 fn show_system_check_popup(parent: &ApplicationWindow, check: Option<SystemCheck>) {

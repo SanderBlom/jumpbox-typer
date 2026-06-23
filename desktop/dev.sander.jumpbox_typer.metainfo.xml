@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.sander.jumpbox_typer</id>
+  <name>Jumpbox Typer</name>
+  <summary>Type pasted or OCR text into remote sessions</summary>
+  <description>
+    <p>Jumpbox Typer helps paste text into terminals, jump boxes, and other remote sessions by sending real keystrokes.</p>
+    <p>It can also extract text from clipboard images with OCR.</p>
+  </description>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <provides>
+    <binary>jumpbox-typer</binary>
+  </provides>
+</component>

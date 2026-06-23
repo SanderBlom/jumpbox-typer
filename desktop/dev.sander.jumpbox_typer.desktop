@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Jumpbox Typer
+Comment=Type pasted or OCR text into remote sessions
+Exec=jumpbox-typer
+Icon=dev.sander.jumpbox_typer
+Terminal=false
+Categories=Utility;GTK;
+StartupNotify=true
