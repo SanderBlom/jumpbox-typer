@@ -51,6 +51,7 @@ pub struct SystemCheckItem {
     pub title: String,
     pub ok: bool,
     pub detail: String,
+    pub help: String,
 }
 
 #[derive(Debug)]

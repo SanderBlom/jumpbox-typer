@@ -6,7 +6,7 @@ use crate::types::{
 };
 use crate::typing::{progress_fraction, run_typing};
 use adw::prelude::*;
-use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
+use adw::{AboutWindow, Application, ApplicationWindow, HeaderBar, ToolbarView};
 use gtk::glib;
 use gtk::{
     Align, Box as GtkBox, Button, DropDown, Entry, Image, Label, Orientation, ProgressBar,
@@ -70,6 +70,8 @@ pub fn build_ui(app: &Application) {
     start.set_sensitive(false);
     let stop = Button::with_label("Stop");
     stop.set_sensitive(false);
+    let clear = Button::with_label("Clear");
+    clear.add_css_class("destructive-action");
     let extract_clipboard_image = Button::with_label("Extract clipboard image text");
     extract_clipboard_image.set_sensitive(false);
     let check_system = Button::with_label("Check system");
@@ -89,6 +91,19 @@ pub fn build_ui(app: &Application) {
     title_widget.append(&app_icon);
     title_widget.append(&title);
     header_bar.set_title_widget(Some(&title_widget));
+
+    let about_button = Button::builder()
+        .icon_name("help-about-symbolic")
+        .tooltip_text("About Jumpbox Typer")
+        .build();
+    header_bar.pack_end(&about_button);
+
+    {
+        let window = window.clone();
+        about_button.connect_clicked(move |_| {
+            show_about_window(&window);
+        });
+    }
 
     let settings = adw::PreferencesGroup::builder()
         .title("Typing Settings")
@@ -111,6 +126,7 @@ pub fn build_ui(app: &Application) {
     actions.set_hexpand(true);
     actions.append(&start);
     actions.append(&stop);
+    actions.append(&clear);
     actions.append(&extract_clipboard_image);
     actions.append(&check_system);
 
@@ -230,6 +246,15 @@ pub fn build_ui(app: &Application) {
                 cancel.store(true, Ordering::Relaxed);
                 status.set_text("Stopping...");
             }
+        });
+    }
+
+    {
+        let text_view = text_view.clone();
+        let status = status.clone();
+        clear.connect_clicked(move |_| {
+            text_view.buffer().set_text("");
+            status.set_text("Cleared text.");
         });
     }
 
@@ -432,6 +457,29 @@ fn app_icon_path() -> PathBuf {
     PathBuf::from("assets/jumpbox-typer.svg")
 }
 
+fn show_about_window(parent: &ApplicationWindow) {
+    let about = AboutWindow::builder()
+        .transient_for(parent)
+        .modal(true)
+        .application_name("Jumpbox Typer")
+        .application_icon("dev.sander.jumpbox_typer")
+        .version(env!("CARGO_PKG_VERSION"))
+        .developer_name("Sander Blom")
+        .comments("Jumpbox Typer makes remote-session text entry less painful across locked-down jump hosts such as AVD, Citrix, Horizon, and similar environments. It combines existing tools for keystroke injection and OCR. If a proper zero-trust setup like Boundary, Tailscale, or Twingate were already in place, this app would probably not need to exist.")
+        .copyright("Copyright © 2026 Sander Blom")
+        .license_type(gtk::License::MitX11)
+        .website("https://github.com/SanderBlom/jumpbox-typer")
+        .issue_url("https://github.com/SanderBlom/jumpbox-typer/issues")
+        .developers(["Sander Blom"])
+        .build();
+
+    about.set_translator_credits(
+        "All credit goes to the maintainers of the underlying typing and OCR tools.",
+    );
+
+    about.present();
+}
+
 fn show_system_check_popup(parent: &ApplicationWindow, check: Option<SystemCheck>) {
     let popup = gtk::Window::builder()
         .transient_for(parent)
@@ -516,9 +564,54 @@ fn system_check_row(item: &SystemCheckItem) -> GtkBox {
     text.append(&title);
     text.append(&detail);
 
+    let info = Button::builder()
+        .icon_name("dialog-information-symbolic")
+        .tooltip_text("What does this check mean?")
+        .build();
+    info.connect_clicked({
+        let item = item.clone();
+        move |_| show_check_help(&item)
+    });
+
     row.append(&icon);
     row.append(&text);
+    row.append(&info);
     row
+}
+
+fn show_check_help(item: &SystemCheckItem) {
+    let dialog = gtk::Window::builder()
+        .modal(true)
+        .title(&item.title)
+        .default_width(520)
+        .default_height(220)
+        .build();
+
+    let body = GtkBox::new(Orientation::Vertical, 12);
+    body.set_margin_top(16);
+    body.set_margin_bottom(16);
+    body.set_margin_start(16);
+    body.set_margin_end(16);
+
+    let title = Label::new(Some(&item.title));
+    title.add_css_class("heading");
+    title.set_halign(Align::Start);
+
+    let text = Label::new(Some(&item.help));
+    text.set_halign(Align::Start);
+    text.set_wrap(true);
+    text.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+
+    let close = Button::with_label("Close");
+    let dialog_clone = dialog.clone();
+    close.connect_clicked(move |_| dialog_clone.close());
+
+    body.append(&title);
+    body.append(&text);
+    body.append(&close);
+
+    dialog.set_child(Some(&body));
+    dialog.present();
 }
 
 fn numeric_entry(value: &str) -> Entry {

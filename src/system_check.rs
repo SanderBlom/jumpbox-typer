@@ -32,16 +32,19 @@ fn run_system_check() -> SystemCheck {
                 } else {
                     "Install ydotool: sudo apt install ydotool".to_string()
                 },
+                help: "ydotool is the tool that sends synthetic keystrokes. The app needs it for Start typing and OCR insertion into the target session.".to_string(),
             },
             SystemCheckItem {
                 title: "ydotoold socket".to_string(),
                 ok: socket_status.is_ready(),
-                detail: socket_status.message,
+                detail: socket_status.message.clone(),
+                help: "ydotoold is the background daemon that actually talks to the input system. The socket shows that the daemon is running and reachable for typing.".to_string(),
             },
             SystemCheckItem {
                 title: "/dev/uinput access".to_string(),
                 ok: uinput_status.ready,
-                detail: uinput_status.message,
+                detail: uinput_status.message.clone(),
+                help: "uinput is the Linux kernel interface used to create a virtual keyboard. If the app cannot open it, ydotoold may not be able to start or recover.".to_string(),
             },
             SystemCheckItem {
                 title: "tesseract OCR installed".to_string(),
@@ -51,6 +54,7 @@ fn run_system_check() -> SystemCheck {
                 } else {
                     "Install tesseract OCR: sudo apt install tesseract-ocr".to_string()
                 },
+                help: "Tesseract reads text from clipboard images and screenshots. The OCR button depends on it to turn a screenshot into editable text.".to_string(),
             },
         ],
         can_type,
