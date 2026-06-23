@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn run_ocr_file(image_path: PathBuf) -> Result<String, String> {
     let ocr_output = Command::new("tesseract")
+        .args(["--psm", "6", "-c", "preserve_interword_spaces=1"])
         .arg(&image_path)
         .arg("stdout")
         .output()
