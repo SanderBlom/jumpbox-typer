@@ -19,7 +19,7 @@ fn run_system_check() -> SystemCheck {
     let socket_status = ydotool_socket_status();
     let uinput_status = uinput_status();
 
-    let can_type = ydotool && socket_status.is_ready();
+    let can_type = can_type(ydotool, &socket_status, &uinput_status);
     let can_ocr = tesseract;
 
     SystemCheck {
@@ -71,6 +71,7 @@ struct UinputStatus {
 #[derive(Debug)]
 struct SocketStatus {
     ready: bool,
+    path_known: bool,
     message: String,
 }
 
@@ -78,23 +79,34 @@ impl SocketStatus {
     fn is_ready(&self) -> bool {
         self.ready
     }
+
+    fn can_recover(&self) -> bool {
+        self.path_known && !self.ready
+    }
+}
+
+fn can_type(ydotool_installed: bool, socket_status: &SocketStatus, uinput_status: &UinputStatus) -> bool {
+    ydotool_installed && (socket_status.is_ready() || (socket_status.can_recover() && uinput_status.ready))
 }
 
 fn ydotool_socket_status() -> SocketStatus {
     match ydotool_socket_path() {
         Some(socket) if socket.exists() => SocketStatus {
             ready: true,
+            path_known: true,
             message: format!("OK ydotoold socket found at {}.", socket.display()),
         },
         Some(socket) => SocketStatus {
             ready: false,
+            path_known: true,
             message: format!(
-                "ydotoold is not running or its socket is missing at {}. Start/Check will not type until ydotoold is running. Try: systemctl --user start ydotool.service",
+                "ydotoold is not running or its socket is missing at {}. Start typing can still try to launch ydotoold automatically, or you can run: systemctl --user start ydotool.service",
                 socket.display()
             ),
         },
         None => SocketStatus {
             ready: false,
+            path_known: false,
             message:
                 "Could not determine the ydotoold socket path because XDG_RUNTIME_DIR is not set."
                     .to_string(),
@@ -210,5 +222,45 @@ pub fn command_stderr(output: &std::process::Output) -> String {
         output.status.to_string()
     } else {
         stderr.replace('\n', " ")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn socket_status(ready: bool, path_known: bool) -> SocketStatus {
+        SocketStatus {
+            ready,
+            path_known,
+            message: String::new(),
+        }
+    }
+
+    fn uinput_status(ready: bool) -> UinputStatus {
+        UinputStatus {
+            ready,
+            message: String::new(),
+        }
+    }
+
+    #[test]
+    fn can_type_when_socket_is_ready() {
+        assert!(can_type(true, &socket_status(true, true), &uinput_status(false)));
+    }
+
+    #[test]
+    fn can_type_when_socket_can_be_started() {
+        assert!(can_type(true, &socket_status(false, true), &uinput_status(true)));
+    }
+
+    #[test]
+    fn cannot_type_without_known_socket_path() {
+        assert!(!can_type(true, &socket_status(false, false), &uinput_status(true)));
+    }
+
+    #[test]
+    fn cannot_type_without_ydotool_installed() {
+        assert!(!can_type(false, &socket_status(true, true), &uinput_status(true)));
     }
 }
