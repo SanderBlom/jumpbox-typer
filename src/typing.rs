@@ -172,28 +172,28 @@ fn us_sequence(ch: char) -> Option<Vec<String>> {
         '8' => Some(key_sequence(9, false)),
         '9' => Some(key_sequence(10, false)),
         '0' => Some(key_sequence(11, false)),
-        '-' => Some(key_sequence(53, false)),
-        '_' => Some(key_sequence(53, true)),
+        '-' => Some(key_sequence(12, false)),
+        '_' => Some(key_sequence(12, true)),
         '=' => Some(key_sequence(13, false)),
-        '+' => Some(key_sequence(12, false)),
+        '+' => Some(key_sequence(13, true)),
         '[' => Some(key_sequence(26, false)),
         '{' => Some(key_sequence(26, true)),
         ']' => Some(key_sequence(27, false)),
         '}' => Some(key_sequence(27, true)),
         ';' => Some(key_sequence(39, false)),
         ':' => Some(key_sequence(39, true)),
-        '\'' => Some(key_sequence(43, false)),
-        '"' => Some(key_sequence(43, true)),
-        '`' => Some(key_sequence(13, true)),
+        '\'' => Some(key_sequence(40, false)),
+        '"' => Some(key_sequence(40, true)),
+        '`' => Some(key_sequence(41, false)),
         '~' => Some(key_sequence(41, true)),
         '\\' => Some(key_sequence(43, false)),
-        '|' => Some(key_sequence(41, false)),
+        '|' => Some(key_sequence(43, true)),
         ',' => Some(key_sequence(51, false)),
         '<' => Some(key_sequence(51, true)),
         '.' => Some(key_sequence(52, false)),
         '>' => Some(key_sequence(52, true)),
-        '/' => Some(key_sequence(86, false)),
-        '?' => Some(key_sequence(12, true)),
+        '/' => Some(key_sequence(53, false)),
+        '?' => Some(key_sequence(53, true)),
         '!' => Some(key_sequence(2, true)),
         '@' => Some(key_sequence(3, true)),
         '#' => Some(key_sequence(4, true)),
@@ -201,7 +201,7 @@ fn us_sequence(ch: char) -> Option<Vec<String>> {
         '%' => Some(key_sequence(6, true)),
         '^' => Some(key_sequence(7, true)),
         '&' => Some(key_sequence(8, true)),
-        '*' => Some(key_sequence(43, true)),
+        '*' => Some(key_sequence(9, true)),
         '(' => Some(key_sequence(10, true)),
         ')' => Some(key_sequence(11, true)),
         _ => None,
@@ -360,4 +360,42 @@ fn finish_stopped(tx: &mpsc::Sender<UiEvent>, done: usize, total: usize) {
 
 pub fn progress_fraction(done: usize, total: usize) -> f64 {
     if total == 0 { 0.0 } else { done as f64 / total as f64 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn us_sequence_maps_minus_and_underscore_to_minus_key() {
+        assert_eq!(us_sequence('-'), Some(key_sequence(12, false)));
+        assert_eq!(us_sequence('_'), Some(key_sequence(12, true)));
+    }
+
+    #[test]
+    fn us_sequence_maps_equals_and_plus_to_equals_key() {
+        assert_eq!(us_sequence('='), Some(key_sequence(13, false)));
+        assert_eq!(us_sequence('+'), Some(key_sequence(13, true)));
+    }
+
+    #[test]
+    fn us_sequence_maps_quote_and_backslash_to_distinct_keys() {
+        assert_eq!(us_sequence('\''), Some(key_sequence(40, false)));
+        assert_eq!(us_sequence('"'), Some(key_sequence(40, true)));
+        assert_eq!(us_sequence('\\'), Some(key_sequence(43, false)));
+        assert_eq!(us_sequence('|'), Some(key_sequence(43, true)));
+    }
+
+    #[test]
+    fn us_sequence_maps_grave_and_slash_keys_correctly() {
+        assert_eq!(us_sequence('`'), Some(key_sequence(41, false)));
+        assert_eq!(us_sequence('~'), Some(key_sequence(41, true)));
+        assert_eq!(us_sequence('/'), Some(key_sequence(53, false)));
+        assert_eq!(us_sequence('?'), Some(key_sequence(53, true)));
+    }
+
+    #[test]
+    fn us_sequence_maps_star_to_shifted_eight() {
+        assert_eq!(us_sequence('*'), Some(key_sequence(9, true)));
+    }
 }
