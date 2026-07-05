@@ -45,7 +45,14 @@ Or install to a custom prefix:
 PREFIX=/usr/local ./install.sh
 ```
 
-The installer copies:
+Without `PREFIX`, the installer follows the user XDG layout and copies:
+
+- the binary to `~/.local/bin/jumpbox-typer`
+- the app icon to `${XDG_DATA_HOME:-~/.local/share}/icons/hicolor/scalable/apps/dev.sander.jumpbox_typer.svg`
+- the desktop entry to `${XDG_DATA_HOME:-~/.local/share}/applications/dev.sander.jumpbox_typer.desktop`
+- the AppStream metadata to `${XDG_DATA_HOME:-~/.local/share}/metainfo/dev.sander.jumpbox_typer.metainfo.xml`
+
+With `PREFIX` set, the installer copies:
 
 - the binary to `bin/jumpbox-typer`
 - the app icon to `share/icons/hicolor/scalable/apps/dev.sander.jumpbox_typer.svg`

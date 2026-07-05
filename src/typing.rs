@@ -35,6 +35,7 @@ pub fn run_typing(config: StartConfig, cancel: Arc<AtomicBool>, tx: mpsc::Sender
             return;
         }
 
+        let typed_at = Instant::now();
         if let Err(err) = type_char(ch, config.keyboard_layout) {
             let _ = tx.send(UiEvent::Finished {
                 status: format!("Error: {err}"),
@@ -48,7 +49,8 @@ pub fn run_typing(config: StartConfig, cancel: Arc<AtomicBool>, tx: mpsc::Sender
             enter_pause
         } else {
             interval
-        };
+        }
+        .saturating_sub(typed_at.elapsed());
 
         if sleep_cancelable(pause, &cancel, |_| {}).is_err() {
             finish_stopped(&tx, index + 1, total);

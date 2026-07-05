@@ -4,6 +4,8 @@ Small tool for making life a bit less horrible when forced to work through layer
 
 The app is built and tested on Ubuntu 26.04.
 
+![Image of the app](docs/jumpbox-typer-app.png)
+
 ## What It Does
 
 - Types pasted text into remote sessions where clipboard paste is blocked
@@ -18,6 +20,8 @@ Use the local installer:
 ```
 
 See [BUILD.md](BUILD.md) for build and packaging notes.
+
+The app stores typing preferences in `~/.config/jumpbox-typer/config.txt` by default, or under `XDG_CONFIG_HOME` when set. If that file is missing, the built-in defaults are used.
 
 ## Safety
 

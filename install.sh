@@ -1,11 +1,17 @@
 #!/usr/bin/env sh
 set -eu
 
-PREFIX="${PREFIX:-$HOME/.local}"
-BIN_DIR="$PREFIX/bin"
-ICON_DIR="$PREFIX/share/icons/hicolor/scalable/apps"
-APP_DIR="$PREFIX/share/applications"
-METADATA_DIR="$PREFIX/share/metainfo"
+if [ "${PREFIX+set}" = "set" ]; then
+  BIN_DIR="$PREFIX/bin"
+  SHARE_DIR="$PREFIX/share"
+else
+  BIN_DIR="${HOME}/.local/bin"
+  SHARE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}"
+fi
+
+ICON_DIR="$SHARE_DIR/icons/hicolor/scalable/apps"
+APP_DIR="$SHARE_DIR/applications"
+METADATA_DIR="$SHARE_DIR/metainfo"
 
 mkdir -p "$BIN_DIR" "$ICON_DIR" "$APP_DIR" "$METADATA_DIR"
 
@@ -28,11 +34,12 @@ install_if_changed desktop/dev.sander.jumpbox_typer.desktop "$APP_DIR/dev.sander
 install_if_changed desktop/dev.sander.jumpbox_typer.metainfo.xml "$METADATA_DIR/dev.sander.jumpbox_typer.metainfo.xml"
 
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-  gtk-update-icon-cache -f -t "$PREFIX/share/icons/hicolor" >/dev/null 2>&1 || true
+  gtk-update-icon-cache -f -t "$SHARE_DIR/icons/hicolor" >/dev/null 2>&1 || true
 fi
 
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database "$APP_DIR" >/dev/null 2>&1 || true
 fi
 
-echo "Installed to $PREFIX"
+echo "Installed binary to $BIN_DIR"
+echo "Installed desktop assets to $SHARE_DIR"

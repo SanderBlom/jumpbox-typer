@@ -1,22 +1,18 @@
 use crate::ocr::{run_ocr_file, temporary_ocr_image_path};
+use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
 use crate::system_check::{ensure_ydotool_ready, queue_system_check, require_command};
-use crate::types::{
-    AppState, KeyboardLayout, StartConfig, SystemCheck, SystemCheckItem, UiEvent,
-    DEFAULT_CHARS_PER_SECOND, DEFAULT_DELAY_SECONDS, DEFAULT_ENTER_PAUSE_SECONDS,
-};
+use crate::ui::dialogs::{show_about_window, show_system_check_popup};
+use crate::ui::widgets::{action_row, numeric_entry};
+use crate::types::{AppState, SystemCheck, UiEvent};
 use crate::typing::{progress_fraction, run_typing};
 use adw::prelude::*;
-use adw::{AboutWindow, Application, ApplicationWindow, HeaderBar, ToolbarView};
+use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
 use gtk::glib;
 use gtk::{
-    Align, Box as GtkBox, Button, DropDown, Entry, Image, Label, Orientation, ProgressBar,
-    ScrolledWindow, TextView, WrapMode,
+    Align, Box as GtkBox, Button, DropDown, Label, Orientation, ProgressBar, ScrolledWindow,
+    TextView, WrapMode,
 };
 use std::cell::{Cell, RefCell};
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
@@ -25,6 +21,8 @@ use std::thread;
 use std::time::Duration;
 
 pub fn build_ui(app: &Application) {
+    let stored_config = load_app_config();
+
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Jumpbox Typer")
@@ -59,11 +57,11 @@ pub fn build_ui(app: &Application) {
     editor.append(&editor_title);
     editor.append(&scroller);
 
-    let delay = numeric_entry(&format!("{DEFAULT_DELAY_SECONDS:.1}"));
-    let speed = numeric_entry(&format!("{DEFAULT_CHARS_PER_SECOND:.0}"));
-    let enter_pause = numeric_entry(&format!("{DEFAULT_ENTER_PAUSE_SECONDS:.2}"));
+    let delay = numeric_entry(&stored_config.delay_seconds.to_string());
+    let speed = numeric_entry(&stored_config.chars_per_second.to_string());
+    let enter_pause = numeric_entry(&stored_config.enter_pause_seconds.to_string());
     let keyboard_layout = DropDown::from_strings(&["Norwegian", "US"]);
-    keyboard_layout.set_selected(load_keyboard_layout_index());
+    keyboard_layout.set_selected(stored_config.keyboard_layout_index());
 
     let start = Button::with_label("Start typing");
     start.add_css_class("suggested-action");
@@ -85,12 +83,7 @@ pub fn build_ui(app: &Application) {
         "Jumpbox Typer",
         "Type pasted or OCR text into focused remote sessions",
     );
-    let title_widget = GtkBox::new(Orientation::Horizontal, 10);
-    let app_icon = Image::from_file(app_icon_path());
-    app_icon.set_pixel_size(28);
-    title_widget.append(&app_icon);
-    title_widget.append(&title);
-    header_bar.set_title_widget(Some(&title_widget));
+    header_bar.set_title_widget(Some(&title));
 
     let about_button = Button::builder()
         .icon_name("help-about-symbolic")
@@ -168,9 +161,57 @@ pub fn build_ui(app: &Application) {
     let show_check_popup_on_finish = Rc::new(Cell::new(false));
 
     {
+        let delay_for_signal = delay.clone();
+        let delay = delay.clone();
+        let speed = speed.clone();
+        let enter_pause = enter_pause.clone();
         let keyboard_layout = keyboard_layout.clone();
-        keyboard_layout.connect_selected_notify(move |dropdown| {
-            save_keyboard_layout_index(dropdown.selected());
+
+        delay_for_signal.connect_changed(move |_| {
+            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+                save_app_config(&config);
+            }
+        });
+    }
+
+    {
+        let speed_for_signal = speed.clone();
+        let delay = delay.clone();
+        let speed = speed.clone();
+        let enter_pause = enter_pause.clone();
+        let keyboard_layout = keyboard_layout.clone();
+
+        speed_for_signal.connect_changed(move |_| {
+            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+                save_app_config(&config);
+            }
+        });
+    }
+
+    {
+        let enter_pause_for_signal = enter_pause.clone();
+        let delay = delay.clone();
+        let speed = speed.clone();
+        let enter_pause = enter_pause.clone();
+        let keyboard_layout = keyboard_layout.clone();
+
+        enter_pause_for_signal.connect_changed(move |_| {
+            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+                save_app_config(&config);
+            }
+        });
+    }
+
+    {
+        let keyboard_layout_for_signal = keyboard_layout.clone();
+        let delay = delay.clone();
+        let speed = speed.clone();
+        let enter_pause = enter_pause.clone();
+
+        keyboard_layout_for_signal.connect_selected_notify(move |dropdown| {
+            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, dropdown.selected()) {
+                save_app_config(&config);
+            }
         });
     }
 
@@ -298,7 +339,7 @@ pub fn build_ui(app: &Application) {
 
                 let image_path = temporary_ocr_image_path();
                 if let Err(err) = texture.save_to_png(&image_path) {
-                    let _ = fs::remove_file(&image_path);
+                    let _ = std::fs::remove_file(&image_path);
                     let _ = worker_tx.send(UiEvent::OcrFinished {
                         status: format!("Failed to save clipboard image: {err}"),
                         text: None,
@@ -429,269 +470,4 @@ pub fn build_ui(app: &Application) {
     }
 
     window.present();
-}
-
-fn action_row(title: &str, subtitle: &str, child: &impl IsA<gtk::Widget>) -> adw::ActionRow {
-    child.set_halign(Align::End);
-    child.set_valign(Align::Center);
-
-    let row = adw::ActionRow::builder()
-        .title(title)
-        .subtitle(subtitle)
-        .activatable_widget(child)
-        .build();
-    row.add_suffix(child);
-    row
-}
-
-fn app_icon_path() -> PathBuf {
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(dir) = exe_path.parent() {
-            let candidate = dir.join("assets/jumpbox-typer.svg");
-            if candidate.exists() {
-                return candidate;
-            }
-        }
-    }
-
-    PathBuf::from("assets/jumpbox-typer.svg")
-}
-
-fn show_about_window(parent: &ApplicationWindow) {
-    let about = AboutWindow::builder()
-        .transient_for(parent)
-        .modal(true)
-        .application_name("Jumpbox Typer")
-        .application_icon("dev.sander.jumpbox_typer")
-        .version(env!("CARGO_PKG_VERSION"))
-        .developer_name("Sander Blomvagnes")
-        .comments("Jumpbox Typer makes remote-session text entry less painful across locked-down jump hosts such as AVD, Citrix, Horizon, and similar environments. It combines existing tools for keystroke injection and OCR. If a proper zero-trust setup like Boundary, Tailscale, or Twingate were already in place, this app would probably not need to exist.")
-        .copyright("Copyright © 2026 Sander Blomvagnes")
-        .license_type(gtk::License::MitX11)
-        .website("https://github.com/SanderBlom/jumpbox-typer")
-        .issue_url("https://github.com/SanderBlom/jumpbox-typer/issues")
-        .developers(["Sander Blomvagnes", "sanderblom (GitHub)"])
-        .build();
-
-    about.set_translator_credits(
-        "Credit to the maintainers of the underlying typing and OCR tools, and to gpt-5.4-mini for help shaping the implementation.",
-    );
-    about.add_link("ydotool", "https://github.com/ReimuNotMoe/ydotool");
-    about.add_link("Tesseract OCR", "https://github.com/tesseract-ocr/tesseract");
-
-    about.present();
-}
-
-fn show_system_check_popup(parent: &ApplicationWindow, check: Option<SystemCheck>) {
-    let popup = gtk::Window::builder()
-        .transient_for(parent)
-        .modal(true)
-        .title("System checks")
-        .default_width(640)
-        .default_height(420)
-        .build();
-
-    let body = GtkBox::new(Orientation::Vertical, 12);
-    body.set_margin_top(16);
-    body.set_margin_bottom(16);
-    body.set_margin_start(16);
-    body.set_margin_end(16);
-
-    let summary = Label::new(None);
-    summary.set_wrap(true);
-    summary.set_halign(Align::Start);
-    body.append(&summary);
-
-    let rows = GtkBox::new(Orientation::Vertical, 8);
-    body.append(&rows);
-
-    if let Some(check) = check {
-        let has_failures = check.items.iter().any(|item| !item.ok);
-        summary.set_text(if has_failures {
-            "Fix the red items before starting."
-        } else {
-            "Everything looks ready."
-        });
-        rebuild_check_rows(&rows, &check.items);
-    } else {
-        summary.set_text("Running system checks...");
-    }
-
-    let close = Button::with_label("Close");
-    let popup_clone = popup.clone();
-    close.connect_clicked(move |_| popup_clone.close());
-    body.append(&close);
-
-    popup.set_child(Some(&body));
-    popup.present();
-}
-
-fn rebuild_check_rows(group: &GtkBox, items: &[SystemCheckItem]) {
-    while let Some(child) = group.first_child() {
-        group.remove(&child);
-    }
-
-    for item in items {
-        group.append(&system_check_row(item));
-    }
-}
-
-fn system_check_row(item: &SystemCheckItem) -> GtkBox {
-    let row = GtkBox::new(Orientation::Horizontal, 12);
-    row.add_css_class("card");
-    row.set_margin_top(4);
-    row.set_margin_bottom(4);
-    row.set_margin_start(4);
-    row.set_margin_end(4);
-
-    let icon_name = if item.ok {
-        "emblem-ok-symbolic"
-    } else {
-        "dialog-error-symbolic"
-    };
-
-    let icon = Image::from_icon_name(icon_name);
-    icon.set_pixel_size(18);
-    icon.add_css_class(if item.ok { "success" } else { "error" });
-
-    let text = GtkBox::new(Orientation::Vertical, 2);
-    let title = Label::new(Some(&item.title));
-    title.set_halign(Align::Start);
-    title.add_css_class("heading");
-    let detail = Label::new(Some(&item.detail));
-    detail.set_halign(Align::Start);
-    detail.set_wrap(true);
-    detail.set_wrap_mode(gtk::pango::WrapMode::WordChar);
-
-    text.append(&title);
-    text.append(&detail);
-
-    let info = Button::builder()
-        .icon_name("dialog-information-symbolic")
-        .tooltip_text("What does this check mean?")
-        .build();
-    info.connect_clicked({
-        let item = item.clone();
-        move |_| show_check_help(&item)
-    });
-
-    row.append(&icon);
-    row.append(&text);
-    row.append(&info);
-    row
-}
-
-fn show_check_help(item: &SystemCheckItem) {
-    let dialog = gtk::Window::builder()
-        .modal(true)
-        .title(&item.title)
-        .default_width(520)
-        .default_height(220)
-        .build();
-
-    let body = GtkBox::new(Orientation::Vertical, 12);
-    body.set_margin_top(16);
-    body.set_margin_bottom(16);
-    body.set_margin_start(16);
-    body.set_margin_end(16);
-
-    let title = Label::new(Some(&item.title));
-    title.add_css_class("heading");
-    title.set_halign(Align::Start);
-
-    let text = Label::new(Some(&item.help));
-    text.set_halign(Align::Start);
-    text.set_wrap(true);
-    text.set_wrap_mode(gtk::pango::WrapMode::WordChar);
-
-    let close = Button::with_label("Close");
-    let dialog_clone = dialog.clone();
-    close.connect_clicked(move |_| dialog_clone.close());
-
-    body.append(&title);
-    body.append(&text);
-    body.append(&close);
-
-    dialog.set_child(Some(&body));
-    dialog.present();
-}
-
-fn numeric_entry(value: &str) -> Entry {
-    let entry = Entry::new();
-    entry.set_text(value);
-    entry.set_width_chars(10);
-    entry
-}
-
-fn read_config(
-    text_view: &TextView,
-    delay: &Entry,
-    speed: &Entry,
-    enter_pause: &Entry,
-    layout_index: u32,
-) -> Result<StartConfig, String> {
-    let buffer = text_view.buffer();
-    let start = buffer.start_iter();
-    let end = buffer.end_iter();
-    let text = buffer.text(&start, &end, true).to_string();
-    if text.is_empty() {
-        return Err("Paste or write text before starting.".to_string());
-    }
-
-    Ok(StartConfig {
-        text,
-        delay_seconds: read_float(&delay.text(), "start delay", 0.0, 300.0)?,
-        chars_per_second: read_float(&speed.text(), "typing speed", 0.1, 120.0)?,
-        enter_pause_seconds: read_float(&enter_pause.text(), "pause after Enter", 0.0, 10.0)?,
-        keyboard_layout: match layout_index {
-            1 => KeyboardLayout::Us,
-            _ => KeyboardLayout::Norwegian,
-        },
-    })
-}
-
-fn load_keyboard_layout_index() -> u32 {
-    let path = keyboard_layout_path();
-    let Ok(text) = fs::read_to_string(path) else {
-        return 0;
-    };
-
-    match text.trim() {
-        "US" => 1,
-        _ => 0,
-    }
-}
-
-fn save_keyboard_layout_index(index: u32) {
-    let label = if index == 1 { "US" } else { "Norwegian" };
-    let path = keyboard_layout_path();
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-
-    if let Ok(mut file) = File::create(path) {
-        let _ = writeln!(file, "{label}");
-    }
-}
-
-fn keyboard_layout_path() -> std::path::PathBuf {
-    std::env::var_os("XDG_CONFIG_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".config")))
-        .unwrap_or_else(|| std::path::PathBuf::from(".") )
-        .join("jumpbox-typer/keyboard-layout.txt")
-}
-
-fn read_float(value: &str, label: &str, min: f64, max: f64) -> Result<f64, String> {
-    let number = value
-        .trim()
-        .replace(',', ".")
-        .parse::<f64>()
-        .map_err(|_| format!("{label} must be a number."))?;
-
-    if !(min..=max).contains(&number) {
-        return Err(format!("{label} must be between {min:.1} and {max:.1}."));
-    }
-
-    Ok(number)
 }
