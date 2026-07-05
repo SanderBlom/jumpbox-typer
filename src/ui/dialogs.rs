@@ -17,11 +17,12 @@ pub fn show_about_window(parent: &ApplicationWindow) {
         .license_type(gtk::License::MitX11)
         .website("https://github.com/SanderBlom/jumpbox-typer")
         .issue_url("https://github.com/SanderBlom/jumpbox-typer/issues")
-        .developers(["Sander Blomvagnes", "sanderblom (GitHub)"])
+        .developers(["GPT-5.4 model"])
         .build();
 
-    about.set_translator_credits(
-        "Credit to the maintainers of the underlying typing and OCR tools, and to gpt-5.4-mini for help shaping the implementation.",
+    about.add_credit_section(
+        Some("Acknowledgements"),
+        &["Maintainers of ydotool and Tesseract OCR"],
     );
     about.add_link("ydotool", "https://github.com/ReimuNotMoe/ydotool");
     about.add_link("Tesseract OCR", "https://github.com/tesseract-ocr/tesseract");
