@@ -1,10 +1,12 @@
-use crate::ocr::{run_ocr_file, temporary_ocr_image_path};
+use crate::clipboard::copied_image_file;
+use crate::ocr::{resolve_tesseract, run_ocr_file, run_ocr_source_file, temporary_ocr_image_path};
+use crate::platform::{prepare_typing, recheck_readiness_on_activation, AccessRequest};
 use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
-use crate::system_check::{ensure_ydotool_ready, queue_system_check, require_command};
-use crate::ui::dialogs::{show_about_window, show_system_check_popup};
-use crate::ui::widgets::{action_row, numeric_entry};
+use crate::system_check::queue_system_check;
 use crate::types::{AppState, SystemCheck, UiEvent};
 use crate::typing::{progress_fraction, run_typing};
+use crate::ui::dialogs::{show_about_window, show_system_check_popup};
+use crate::ui::widgets::{action_row, numeric_entry};
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
 use gtk::glib;
@@ -19,6 +21,39 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+enum OcrInput {
+    SourceFile(std::path::PathBuf),
+    TemporaryFile(std::path::PathBuf),
+}
+
+fn queue_ocr(tx: mpsc::Sender<UiEvent>, tesseract_path: std::path::PathBuf, input: OcrInput) {
+    thread::spawn(move || {
+        let result = match input {
+            OcrInput::SourceFile(path) => run_ocr_source_file(tesseract_path, path),
+            OcrInput::TemporaryFile(path) => run_ocr_file(tesseract_path, path),
+        };
+        let event = match result {
+            Ok(text) if text.trim().is_empty() => UiEvent::OcrFinished {
+                status: "No text found in clipboard image.".to_string(),
+                text: None,
+            },
+            Ok(text) => {
+                let character_count = text.chars().count();
+                UiEvent::OcrFinished {
+                    status: format!("Inserted {character_count} OCR characters."),
+                    text: Some(text),
+                }
+            }
+            Err(message) => UiEvent::OcrFinished {
+                status: message,
+                text: None,
+            },
+        };
+
+        let _ = tx.send(event);
+    });
+}
 
 pub fn build_ui(app: &Application) {
     let stored_config = load_app_config();
@@ -102,7 +137,11 @@ pub fn build_ui(app: &Application) {
         .title("Typing Settings")
         .description("Tune the delay and typing pace for the target remote session")
         .build();
-    settings.add(&action_row("Start Delay", "Seconds before typing begins", &delay));
+    settings.add(&action_row(
+        "Start Delay",
+        "Seconds before typing begins",
+        &delay,
+    ));
     settings.add(&action_row("Typing Speed", "Characters per second", &speed));
     settings.add(&action_row(
         "Enter Pause",
@@ -111,7 +150,7 @@ pub fn build_ui(app: &Application) {
     ));
     settings.add(&action_row(
         "Keyboard Layout",
-        "Choose the layout used for special characters",
+        "Match this layout to the active system input source",
         &keyboard_layout,
     ));
 
@@ -168,7 +207,9 @@ pub fn build_ui(app: &Application) {
         let keyboard_layout = keyboard_layout.clone();
 
         delay_for_signal.connect_changed(move |_| {
-            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+            if let Ok(config) =
+                read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected())
+            {
                 save_app_config(&config);
             }
         });
@@ -182,7 +223,9 @@ pub fn build_ui(app: &Application) {
         let keyboard_layout = keyboard_layout.clone();
 
         speed_for_signal.connect_changed(move |_| {
-            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+            if let Ok(config) =
+                read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected())
+            {
                 save_app_config(&config);
             }
         });
@@ -196,7 +239,9 @@ pub fn build_ui(app: &Application) {
         let keyboard_layout = keyboard_layout.clone();
 
         enter_pause_for_signal.connect_changed(move |_| {
-            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+            if let Ok(config) =
+                read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected())
+            {
                 save_app_config(&config);
             }
         });
@@ -215,7 +260,16 @@ pub fn build_ui(app: &Application) {
         });
     }
 
-    queue_system_check(tx.clone());
+    if recheck_readiness_on_activation() {
+        let tx = tx.clone();
+        app.connect_active_window_notify(move |app| {
+            if app.active_window().is_some() {
+                queue_system_check(tx.clone(), AccessRequest::CheckOnly);
+            }
+        });
+    }
+
+    queue_system_check(tx.clone(), AccessRequest::CheckOnly);
 
     {
         let state = Rc::clone(&state);
@@ -250,7 +304,9 @@ pub fn build_ui(app: &Application) {
                 }
             };
 
-            if let Err(message) = ensure_ydotool_ready() {
+            start_for_callback.set_sensitive(false);
+            if let Err(message) = prepare_typing() {
+                state.borrow_mut().can_type = false;
                 status.set_text(&message);
                 return;
             }
@@ -266,7 +322,6 @@ pub fn build_ui(app: &Application) {
                 state.cancel = Some(Arc::clone(&cancel));
             }
 
-            start_for_callback.set_sensitive(false);
             stop.set_sensitive(true);
             progress.set_fraction(0.0);
             status.set_text(&format!(
@@ -306,18 +361,33 @@ pub fn build_ui(app: &Application) {
         let clipboard = window.clipboard();
 
         extract_clipboard_image.connect_clicked(move |_| {
-            if let Err(message) = require_command(
-                "tesseract",
-                "tesseract OCR is required: sudo apt install tesseract-ocr",
-            ) {
-                status.set_text(&message);
-                return;
-            }
+            let tesseract_path = match resolve_tesseract() {
+                Ok(path) => path,
+                Err(message) => {
+                    status.set_text(&message);
+                    return;
+                }
+            };
 
             status.set_text("Reading image from clipboard...");
             extract_clipboard_image_for_callback.set_sensitive(false);
 
             let worker_tx = tx.clone();
+            match copied_image_file() {
+                Ok(Some(image_path)) => {
+                    queue_ocr(worker_tx, tesseract_path, OcrInput::SourceFile(image_path));
+                    return;
+                }
+                Ok(None) => {}
+                Err(message) => {
+                    let _ = worker_tx.send(UiEvent::OcrFinished {
+                        status: message,
+                        text: None,
+                    });
+                    return;
+                }
+            }
+
             clipboard.read_texture_async(None::<&gtk::gio::Cancellable>, move |result| {
                 let texture = match result {
                     Ok(Some(texture)) => texture,
@@ -347,27 +417,11 @@ pub fn build_ui(app: &Application) {
                     return;
                 }
 
-                thread::spawn(move || {
-                    let event = match run_ocr_file(image_path) {
-                        Ok(text) if text.trim().is_empty() => UiEvent::OcrFinished {
-                            status: "No text found in clipboard image.".to_string(),
-                            text: None,
-                        },
-                        Ok(text) => {
-                            let character_count = text.chars().count();
-                            UiEvent::OcrFinished {
-                                status: format!("Inserted {character_count} OCR characters."),
-                                text: Some(text),
-                            }
-                        }
-                        Err(message) => UiEvent::OcrFinished {
-                            status: message,
-                            text: None,
-                        },
-                    };
-
-                    let _ = worker_tx.send(event);
-                });
+                queue_ocr(
+                    worker_tx,
+                    tesseract_path,
+                    OcrInput::TemporaryFile(image_path),
+                );
             });
         });
     }
@@ -384,7 +438,7 @@ pub fn build_ui(app: &Application) {
             check_system_for_callback.set_sensitive(false);
             latest_check.borrow_mut().take();
             show_check_popup_on_finish.set(true);
-            queue_system_check(tx.clone());
+            queue_system_check(tx.clone(), AccessRequest::RequestIfNeeded);
         });
     }
 

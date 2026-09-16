@@ -1,7 +1,7 @@
 use crate::types::{SystemCheck, SystemCheckItem};
 use crate::ui::widgets::system_check_row;
-use adw::{AboutWindow, ApplicationWindow};
 use adw::prelude::*;
+use adw::{AboutWindow, ApplicationWindow};
 use gtk::{Align, Box as GtkBox, Button, Label, Orientation};
 
 pub fn show_about_window(parent: &ApplicationWindow) {
@@ -25,7 +25,10 @@ pub fn show_about_window(parent: &ApplicationWindow) {
         &["Maintainers of ydotool and Tesseract OCR"],
     );
     about.add_link("ydotool", "https://github.com/ReimuNotMoe/ydotool");
-    about.add_link("Tesseract OCR", "https://github.com/tesseract-ocr/tesseract");
+    about.add_link(
+        "Tesseract OCR",
+        "https://github.com/tesseract-ocr/tesseract",
+    );
 
     about.present();
 }

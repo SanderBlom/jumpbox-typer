@@ -2,8 +2,8 @@ use crate::types::{
     KeyboardLayout, StartConfig, DEFAULT_CHARS_PER_SECOND, DEFAULT_DELAY_SECONDS,
     DEFAULT_ENTER_PAUSE_SECONDS, MAX_CHARS_PER_SECOND,
 };
-use gtk::{Entry, TextView};
 use gtk::prelude::{EditableExt, TextBufferExt, TextViewExt};
+use gtk::{Entry, TextView};
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -184,7 +184,10 @@ pub fn save_keyboard_layout_index_to(path: impl AsRef<Path>, index: u32) {
 }
 
 pub fn config_path() -> PathBuf {
-    config_path_from(std::env::var_os("XDG_CONFIG_HOME"), std::env::var_os("HOME"))
+    config_path_from(
+        std::env::var_os("XDG_CONFIG_HOME"),
+        std::env::var_os("HOME"),
+    )
 }
 
 pub fn config_path_from(
@@ -206,7 +209,10 @@ pub fn keyboard_layout_path_from(
 }
 
 fn legacy_keyboard_layout_path() -> PathBuf {
-    keyboard_layout_path_from(std::env::var_os("XDG_CONFIG_HOME"), std::env::var_os("HOME"))
+    keyboard_layout_path_from(
+        std::env::var_os("XDG_CONFIG_HOME"),
+        std::env::var_os("HOME"),
+    )
 }
 
 fn config_dir_from(
@@ -267,7 +273,10 @@ mod tests {
             .map(|duration| duration.as_nanos())
             .unwrap_or_default();
 
-        std::env::temp_dir().join(format!("jumpbox-typer-{name}-{}-{stamp}", std::process::id()))
+        std::env::temp_dir().join(format!(
+            "jumpbox-typer-{name}-{}-{stamp}",
+            std::process::id()
+        ))
     }
 
     #[test]
@@ -295,14 +304,21 @@ mod tests {
             Some(std::ffi::OsString::from("/tmp/home-base")),
         );
 
-        assert_eq!(path, PathBuf::from("/tmp/config-base/jumpbox-typer/keyboard-layout.txt"));
+        assert_eq!(
+            path,
+            PathBuf::from("/tmp/config-base/jumpbox-typer/keyboard-layout.txt")
+        );
     }
 
     #[test]
     fn keyboard_layout_path_falls_back_to_home_config() {
-        let path = keyboard_layout_path_from(None, Some(std::ffi::OsString::from("/tmp/home-base")));
+        let path =
+            keyboard_layout_path_from(None, Some(std::ffi::OsString::from("/tmp/home-base")));
 
-        assert_eq!(path, PathBuf::from("/tmp/home-base/.config/jumpbox-typer/keyboard-layout.txt"));
+        assert_eq!(
+            path,
+            PathBuf::from("/tmp/home-base/.config/jumpbox-typer/keyboard-layout.txt")
+        );
     }
 
     #[test]
@@ -312,7 +328,10 @@ mod tests {
             Some(std::ffi::OsString::from("/tmp/home-base")),
         );
 
-        assert_eq!(path, PathBuf::from("/tmp/config-base/jumpbox-typer/config.txt"));
+        assert_eq!(
+            path,
+            PathBuf::from("/tmp/config-base/jumpbox-typer/config.txt")
+        );
     }
 
     #[test]
@@ -323,6 +342,17 @@ mod tests {
         );
 
         assert_eq!(config, AppConfig::default());
+    }
+
+    #[test]
+    fn default_typing_speed_matches_the_platform() {
+        let expected = if cfg!(target_os = "macos") {
+            60.0
+        } else {
+            18.0
+        };
+
+        assert_eq!(AppConfig::default().chars_per_second, expected);
     }
 
     #[test]

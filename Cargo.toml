@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 adw = { package = "libadwaita", version = "0.9", features = ["v1_4"] }
 gtk = { package = "gtk4", version = "0.11" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSPasteboard", "NSPasteboardItem"] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["CGEvent", "CGEventSource", "CGEventTypes", "CGRemoteOperation", "bitflags"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSString", "NSURL"] }

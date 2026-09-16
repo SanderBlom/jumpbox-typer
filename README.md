@@ -1,15 +1,18 @@
 # Jumpbox Typer
 
-Small tool for making life a bit less horrible when forced to work through layers of jump hosts and remote-session hoops.
+Small tool for typing through jump hosts and remote sessions that block clipboard paste.
 
-The app is built and tested on Ubuntu 26.04.
+The app supports Linux and macOS.
+
+For macOS setup and support information, see [README.macos.md](README.macos.md).
 
 ![Image of the app](docs/jumpbox-typer-app.png)
 
 ## What It Does
 
 - Types pasted text into remote sessions where clipboard paste is blocked
-- Lets you extract text from a screenshot of a jumphost or terminal and turn it into plain text when copy/paste back to the host is blocked
+- Extracts plain text from a screenshot of a jump host or terminal
+- Helps when the remote session blocks clipboard transfer back to the host
 
 ## Install
 
@@ -25,4 +28,10 @@ The app stores typing preferences in `~/.config/jumpbox-typer/config.txt` by def
 
 ## Safety
 
-The app sends real keystrokes to whichever window is focused when the delay ends. Test with harmless text first.
+The app sends real keystrokes to the focused window when the delay ends.
+
+Later focus changes redirect the remaining text to the newly focused window.
+
+Stop cancels after the current character sequence. It cannot remove text that the app already sent.
+
+Test with harmless text first.

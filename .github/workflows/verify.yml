@@ -1,0 +1,47 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-24.04
+          - name: macOS 14 Apple Silicon
+            os: macos-14
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+
+      - name: Verify supported macOS architecture
+        if: runner.os == 'macOS'
+        run: test "$(uname -m)" = arm64
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install pkg-config gtk4 libadwaita tesseract librsvg
+
+      - name: Verify
+        run: ./scripts/verify.sh
