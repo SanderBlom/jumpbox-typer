@@ -53,6 +53,24 @@ The macOS bundle links to the Homebrew libraries on the build Mac. It is not a p
 
 Tesseract stays outside the bundle. The application searches its inherited `PATH`, `/opt/homebrew/bin`, and `/usr/local/bin`.
 
+## Build release packages
+
+On Ubuntu 26.04:
+
+```bash
+./scripts/package-deb.sh
+```
+
+The Debian package is written to `target/debian/`.
+
+On macOS:
+
+```bash
+./scripts/package-macos-dmg.sh
+```
+
+The disk image is written to `target/macos/`.
+
 ## Verify a change
 
 Run the same complete feedback loop used by continuous integration:
@@ -112,3 +130,12 @@ APP_DIR=/Applications ./install.sh
 The installer replaces only `Jumpbox Typer.app` in the selected directory. It does not change other applications or user data.
 
 macOS can require Accessibility permission again after you replace an ad-hoc signed development build. Use Check System to request permission.
+
+## GitHub releases
+
+Publishing a GitHub release runs [release-packages.yml](.github/workflows/release-packages.yml).
+
+The release workflow builds and uploads:
+
+- a `.deb` package from Ubuntu 26.04
+- a `.dmg` disk image from Apple Silicon macOS

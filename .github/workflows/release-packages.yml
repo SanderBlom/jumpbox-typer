@@ -1,0 +1,109 @@
+name: Release Packages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  debian-package:
+    name: Ubuntu 26.04 .deb
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr dpkg-dev
+
+      - name: Verify tag matches Cargo version
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          tag="${GITHUB_REF_NAME#v}"
+          test "$tag" = "$version"
+
+      - name: Run tests
+        run: cargo test --all-targets
+
+      - name: Build .deb package
+        run: ./scripts/package-deb.sh
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: target/debian/*.deb
+          if-no-files-found: error
+
+  macos-package:
+    name: macOS .dmg
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Verify supported macOS architecture
+        run: test "$(uname -m)" = arm64
+
+      - name: Install system dependencies
+        run: brew install pkg-config gtk4 libadwaita tesseract librsvg
+
+      - name: Verify tag matches Cargo version
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          tag="${GITHUB_REF_NAME#v}"
+          test "$tag" = "$version"
+
+      - name: Run tests
+        run: cargo test --all-targets
+
+      - name: Build .dmg package
+        run: ./scripts/package-macos-dmg.sh
+
+      - name: Upload .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: target/macos/*.dmg
+          if-no-files-found: error
+
+  publish-release-assets:
+    name: Publish release assets
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    needs:
+      - debian-package
+      - macos-package
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Upload packages to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/**/*.deb
+            release-assets/**/*.dmg
