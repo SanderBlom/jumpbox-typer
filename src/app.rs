@@ -1,6 +1,6 @@
 use crate::clipboard::copied_image_file;
 use crate::ocr::{resolve_tesseract, run_ocr_file, run_ocr_source_file, temporary_ocr_image_path};
-use crate::platform::{prepare_typing, recheck_readiness_on_activation, AccessRequest};
+use crate::platform::{AccessRequest, prepare_typing, recheck_readiness_on_activation};
 use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
 use crate::system_check::queue_system_check;
 use crate::types::{AppState, SystemCheck, UiEvent};
@@ -16,9 +16,9 @@ use gtk::{
 };
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 

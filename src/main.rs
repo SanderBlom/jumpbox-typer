@@ -1,5 +1,5 @@
-use adw::prelude::*;
 use adw::Application;
+use adw::prelude::*;
 use jumpbox_typer::{app, types::APP_ID};
 
 fn main() {

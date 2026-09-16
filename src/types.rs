@@ -1,5 +1,5 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 pub const APP_ID: &str = "app.jumpbox.typer";
 pub const DEFAULT_DELAY_SECONDS: f64 = 5.0;
