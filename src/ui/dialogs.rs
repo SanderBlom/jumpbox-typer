@@ -1,4 +1,4 @@
-use crate::types::{SystemCheck, SystemCheckItem};
+use crate::types::{SystemCheck, SystemCheckItem, APP_ID};
 use crate::ui::widgets::system_check_row;
 use adw::prelude::*;
 use adw::{AboutWindow, ApplicationWindow};
@@ -9,7 +9,7 @@ pub fn show_about_window(parent: &ApplicationWindow) {
         .transient_for(parent)
         .modal(true)
         .application_name("Jumpbox Typer")
-        .application_icon("dev.sander.jumpbox_typer")
+        .application_icon(APP_ID)
         .version(env!("CARGO_PKG_VERSION"))
         .developer_name("Sander Blomvagnes")
         .comments("Jumpbox Typer makes remote-session text entry less painful across locked-down jump hosts such as AVD, Citrix, Horizon, and similar environments. It combines existing tools for keystroke injection and OCR. If a proper zero-trust setup like Boundary, Tailscale, or Twingate were already in place, this app would probably not need to exist.")

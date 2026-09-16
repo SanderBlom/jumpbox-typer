@@ -64,7 +64,7 @@ pub fn build_ui(app: &Application) {
         .default_width(920)
         .default_height(660)
         .build();
-    window.set_icon_name(Some("dev.sander.jumpbox_typer"));
+    window.set_icon_name(Some(crate::types::APP_ID));
 
     let header_bar = HeaderBar::new();
     let toolbar_view = ToolbarView::new();

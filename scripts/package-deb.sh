@@ -24,7 +24,7 @@ package_value() {
 require_command dpkg-deb "dpkg-deb is required. Install it with your system package manager."
 
 package_name="jumpbox-typer"
-package_id="dev.sander.jumpbox_typer"
+package_id="app.jumpbox.typer"
 version="$(package_value version)"
 description="Type pasted or OCR text into remote sessions"
 architecture="$(dpkg --print-architecture)"
@@ -68,8 +68,8 @@ EOF
 
 install -m 0755 target/release/jumpbox-typer "$root_dir/usr/bin/jumpbox-typer"
 install -m 0644 assets/jumpbox-typer.svg "$root_dir/usr/share/icons/hicolor/scalable/apps/${package_id}.svg"
-install -m 0644 desktop/dev.sander.jumpbox_typer.desktop "$root_dir/usr/share/applications/${package_id}.desktop"
-install -m 0644 desktop/dev.sander.jumpbox_typer.metainfo.xml "$root_dir/usr/share/metainfo/${package_id}.metainfo.xml"
+install -m 0644 packaging/linux/${package_id}.desktop "$root_dir/usr/share/applications/${package_id}.desktop"
+install -m 0644 packaging/linux/${package_id}.metainfo.xml "$root_dir/usr/share/metainfo/${package_id}.metainfo.xml"
 
 dpkg-deb --root-owner-group --build "$root_dir"
 

@@ -44,9 +44,9 @@ install_if_changed() {
 }
 
 install -m 0755 target/release/jumpbox-typer "$BIN_DIR/jumpbox-typer"
-install_if_changed assets/jumpbox-typer.svg "$ICON_DIR/dev.sander.jumpbox_typer.svg"
-install_if_changed desktop/dev.sander.jumpbox_typer.desktop "$DESKTOP_DIR/dev.sander.jumpbox_typer.desktop"
-install_if_changed desktop/dev.sander.jumpbox_typer.metainfo.xml "$METADATA_DIR/dev.sander.jumpbox_typer.metainfo.xml"
+install_if_changed assets/jumpbox-typer.svg "$ICON_DIR/app.jumpbox.typer.svg"
+install_if_changed packaging/linux/app.jumpbox.typer.desktop "$DESKTOP_DIR/app.jumpbox.typer.desktop"
+install_if_changed packaging/linux/app.jumpbox.typer.metainfo.xml "$METADATA_DIR/app.jumpbox.typer.metainfo.xml"
 
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
   gtk-update-icon-cache -f -t "$SHARE_DIR/icons/hicolor" >/dev/null 2>&1 || true

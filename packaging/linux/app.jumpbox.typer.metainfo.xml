@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>dev.sander.jumpbox_typer</id>
+  <id>app.jumpbox.typer</id>
   <name>Jumpbox Typer</name>
   <summary>Type pasted or OCR text into remote sessions</summary>
   <description>

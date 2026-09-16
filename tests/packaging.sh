@@ -64,7 +64,7 @@ test_darwin_build_creates_standard_bundle() {
   [ -x "$bundle/Contents/MacOS/jumpbox-typer" ] || fail "Darwin build did not bundle executable"
   [ -f "$bundle/Contents/Info.plist" ] || fail "Darwin build did not create Info.plist"
   [ -f "$bundle/Contents/Resources/jumpbox-typer.icns" ] || fail "Darwin build did not create icon"
-  grep -F '<string>dev.sander.jumpbox-typer</string>' "$bundle/Contents/Info.plist" >/dev/null || \
+  grep -F '<string>app.jumpbox.typer</string>' "$bundle/Contents/Info.plist" >/dev/null || \
     fail "Darwin bundle has wrong identifier"
   grep -F '<string>14.0</string>' "$bundle/Contents/Info.plist" >/dev/null || \
     fail "Darwin bundle has wrong minimum macOS version"
@@ -138,11 +138,11 @@ test_linux_build_and_install_stay_unchanged() {
   project="$test_tmp/project"
   fake_bin="$test_tmp/bin"
   prefix="$test_tmp/prefix"
-  mkdir -p "$project/assets" "$project/desktop" "$fake_bin"
+  mkdir -p "$project/assets" "$project/packaging/linux" "$fake_bin"
   cp build.sh install.sh Cargo.toml Cargo.lock "$project/"
   cp assets/jumpbox-typer.svg "$project/assets/"
-  cp desktop/dev.sander.jumpbox_typer.desktop \
-    desktop/dev.sander.jumpbox_typer.metainfo.xml "$project/desktop/"
+  cp packaging/linux/app.jumpbox.typer.desktop \
+    packaging/linux/app.jumpbox.typer.metainfo.xml "$project/packaging/linux/"
 
   printf '%s\n' '#!/usr/bin/env sh' 'echo Linux' >"$fake_bin/uname"
   printf '%s\n' \
@@ -159,7 +159,7 @@ test_linux_build_and_install_stay_unchanged() {
   )
 
   [ -x "$prefix/bin/jumpbox-typer" ] || fail "Linux installer changed binary destination"
-  [ -f "$prefix/share/applications/dev.sander.jumpbox_typer.desktop" ] || \
+  [ -f "$prefix/share/applications/app.jumpbox.typer.desktop" ] || \
     fail "Linux installer changed desktop-entry destination"
   [ -f "$project/dist/jumpbox-typer-linux-amd64" ] || fail "Linux build artifact changed"
 }
