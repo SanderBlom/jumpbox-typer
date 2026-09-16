@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Rust
         run: |
@@ -40,7 +40,7 @@ jobs:
         run: ./scripts/package-deb.sh
 
       - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: debian-package
           path: target/debian/*.deb
@@ -53,7 +53,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Rust
         run: |
@@ -79,7 +79,7 @@ jobs:
         run: ./scripts/package-macos-dmg.sh
 
       - name: Upload .dmg artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-package
           path: target/macos/*.dmg
@@ -97,12 +97,12 @@ jobs:
 
     steps:
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-assets
 
       - name: Upload packages to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             release-assets/**/*.deb
