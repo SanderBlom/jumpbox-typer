@@ -39,6 +39,9 @@ jobs:
       - name: Build .deb package
         run: ./scripts/package-deb.sh
 
+      - name: Smoke-test .deb package
+        run: ./scripts/smoke-deb.sh
+
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v7
         with:
@@ -77,6 +80,9 @@ jobs:
 
       - name: Build .dmg package
         run: ./scripts/package-macos-dmg.sh
+
+      - name: Smoke-test .dmg package
+        run: ./scripts/smoke-macos-dmg.sh
 
       - name: Upload .dmg artifact
         uses: actions/upload-artifact@v7
