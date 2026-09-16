@@ -11,7 +11,7 @@
   <key>CFBundleIconFile</key>
   <string>jumpbox-typer</string>
   <key>CFBundleIdentifier</key>
-  <string>dev.sander.jumpbox-typer</string>
+  <string>app.jumpbox.typer</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>

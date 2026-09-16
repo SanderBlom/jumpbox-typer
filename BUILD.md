@@ -100,16 +100,16 @@ PREFIX=/usr/local ./install.sh
 Without `PREFIX`, the installer follows the user XDG layout and copies:
 
 - the binary to `~/.local/bin/jumpbox-typer`
-- the app icon to `${XDG_DATA_HOME:-~/.local/share}/icons/hicolor/scalable/apps/dev.sander.jumpbox_typer.svg`
-- the desktop entry to `${XDG_DATA_HOME:-~/.local/share}/applications/dev.sander.jumpbox_typer.desktop`
-- the AppStream metadata to `${XDG_DATA_HOME:-~/.local/share}/metainfo/dev.sander.jumpbox_typer.metainfo.xml`
+- the app icon to `${XDG_DATA_HOME:-~/.local/share}/icons/hicolor/scalable/apps/app.jumpbox.typer.svg`
+- the desktop entry to `${XDG_DATA_HOME:-~/.local/share}/applications/app.jumpbox.typer.desktop`
+- the AppStream metadata to `${XDG_DATA_HOME:-~/.local/share}/metainfo/app.jumpbox.typer.metainfo.xml`
 
 With `PREFIX` set, the installer copies:
 
 - the binary to `bin/jumpbox-typer`
-- the app icon to `share/icons/hicolor/scalable/apps/dev.sander.jumpbox_typer.svg`
-- the desktop entry to `share/applications/dev.sander.jumpbox_typer.desktop`
-- the AppStream metadata to `share/metainfo/dev.sander.jumpbox_typer.metainfo.xml`
+- the app icon to `share/icons/hicolor/scalable/apps/app.jumpbox.typer.svg`
+- the desktop entry to `share/applications/app.jumpbox.typer.desktop`
+- the AppStream metadata to `share/metainfo/app.jumpbox.typer.metainfo.xml`
 
 ## Install on macOS
 
