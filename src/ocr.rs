@@ -2,7 +2,7 @@ use crate::command::resolve_command;
 use crate::system_check::command_stderr;
 use std::env;
 use std::ffi::OsStr;
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -84,16 +84,39 @@ pub(crate) fn run_ocr_source_file(
     Ok(String::from_utf8_lossy(&ocr_output.stdout).to_string())
 }
 
-pub fn temporary_ocr_image_path() -> PathBuf {
+pub fn temporary_ocr_image_path() -> Result<PathBuf, String> {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis())
+        .map(|duration| duration.as_nanos())
         .unwrap_or_default();
 
-    env::temp_dir().join(format!(
-        "jumpbox-typer-ocr-{}-{timestamp}.png",
-        std::process::id()
-    ))
+    for attempt in 0..100 {
+        let path = env::temp_dir().join(format!(
+            "jumpbox-typer-ocr-{}-{timestamp}-{attempt}.png",
+            std::process::id()
+        ));
+
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(file) => {
+                drop(file);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Err(error) =
+                        fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+                    {
+                        let _ = fs::remove_file(&path);
+                        return Err(format!("failed to secure temporary OCR image: {error}"));
+                    }
+                }
+                return Ok(path);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(format!("failed to reserve temporary OCR image: {error}")),
+        }
+    }
+
+    Err("failed to reserve temporary OCR image after repeated attempts".to_string())
 }
 
 #[cfg(test)]
@@ -250,6 +273,29 @@ mod tests {
 
         assert!(text.is_empty());
         assert!(!image.exists());
+    }
+
+    #[test]
+    fn temporary_ocr_image_path_reserves_unique_private_files() {
+        let first = temporary_ocr_image_path().expect("first temp image must be reserved");
+        let second = temporary_ocr_image_path().expect("second temp image must be reserved");
+
+        assert_ne!(first, second);
+        assert!(first.exists());
+        assert!(second.exists());
+
+        #[cfg(unix)]
+        {
+            let mode = fs::metadata(&first)
+                .expect("reserved temp file metadata must exist")
+                .permissions()
+                .mode()
+                & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+
+        let _ = fs::remove_file(first);
+        let _ = fs::remove_file(second);
     }
 
     #[test]

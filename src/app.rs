@@ -407,7 +407,16 @@ pub fn build_ui(app: &Application) {
                     }
                 };
 
-                let image_path = temporary_ocr_image_path();
+                let image_path = match temporary_ocr_image_path() {
+                    Ok(path) => path,
+                    Err(message) => {
+                        let _ = worker_tx.send(UiEvent::OcrFinished {
+                            status: message,
+                            text: None,
+                        });
+                        return;
+                    }
+                };
                 if let Err(err) = texture.save_to_png(&image_path) {
                     let _ = std::fs::remove_file(&image_path);
                     let _ = worker_tx.send(UiEvent::OcrFinished {
