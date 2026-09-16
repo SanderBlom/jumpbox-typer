@@ -423,10 +423,10 @@ fn post_sequence_with(
             modifiers.option = transition.key_down;
         }
 
-        if let Err(error) = post(transition, modifiers) {
-            if first_error.is_none() {
-                first_error = Some(error);
-            }
+        if let Err(error) = post(transition, modifiers)
+            && first_error.is_none()
+        {
+            first_error = Some(error);
         }
     }
 
@@ -440,10 +440,10 @@ fn post_unicode_with(
     let mut first_error = None;
 
     for key_down in [true, false] {
-        if let Err(error) = post(key_down, utf16) {
-            if first_error.is_none() {
-                first_error = Some(error);
-            }
+        if let Err(error) = post(key_down, utf16)
+            && first_error.is_none()
+        {
+            first_error = Some(error);
         }
     }
 

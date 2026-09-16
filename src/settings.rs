@@ -1,6 +1,6 @@
 use crate::types::{
-    KeyboardLayout, StartConfig, DEFAULT_CHARS_PER_SECOND, DEFAULT_DELAY_SECONDS,
-    DEFAULT_ENTER_PAUSE_SECONDS, MAX_CHARS_PER_SECOND,
+    DEFAULT_CHARS_PER_SECOND, DEFAULT_DELAY_SECONDS, DEFAULT_ENTER_PAUSE_SECONDS, KeyboardLayout,
+    MAX_CHARS_PER_SECOND, StartConfig,
 };
 use gtk::prelude::{EditableExt, TextBufferExt, TextViewExt};
 use gtk::{Entry, TextView};

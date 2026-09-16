@@ -254,11 +254,11 @@ mod tests {
 
     #[test]
     fn readiness_requires_resolved_tesseract_to_run_successfully() {
-        let directory = TestDirectory::new("readiness");
-        let ready = directory.path().join("ready-tesseract");
-        let broken = directory.path().join("broken-tesseract");
-        make_fake_tesseract(&ready, "exit 0");
-        make_fake_tesseract(&broken, "exit 9");
+        let search_path = env::var_os("PATH");
+        let ready = resolve_command("true", search_path.as_deref(), &[])
+            .expect("true must be available in PATH");
+        let broken = resolve_command("false", search_path.as_deref(), &[])
+            .expect("false must be available in PATH");
 
         assert!(tesseract_executable_is_ready(&ready));
         assert!(!tesseract_executable_is_ready(&broken));

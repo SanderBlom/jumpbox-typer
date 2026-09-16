@@ -1,4 +1,4 @@
-use crate::types::{SystemCheck, SystemCheckItem, APP_ID};
+use crate::types::{APP_ID, SystemCheck, SystemCheckItem};
 use crate::ui::widgets::system_check_row;
 use adw::prelude::*;
 use adw::{AboutWindow, ApplicationWindow};

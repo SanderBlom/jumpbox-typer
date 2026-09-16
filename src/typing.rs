@@ -1,8 +1,8 @@
 use crate::platform;
 use crate::types::{KeyboardLayout, StartConfig, UiEvent};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
