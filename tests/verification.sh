@@ -54,6 +54,10 @@ test_ci_covers_supported_hosts() {
   [ -f "$workflow" ] || fail "verification workflow is missing"
   grep -F 'ubuntu-24.04' "$workflow" >/dev/null || fail "Linux CI host is missing"
   grep -F 'macos-14' "$workflow" >/dev/null || fail "macOS 14 CI host is missing"
+  grep -F 'branches: [main]' "$workflow" >/dev/null || \
+    fail "push verification should only run on main"
+  grep -F 'cancel-in-progress: true' "$workflow" >/dev/null || \
+    fail "CI does not cancel superseded verification runs"
   grep -F 'test "$(uname -m)" = arm64' "$workflow" >/dev/null || \
     fail "macOS CI does not enforce the supported Apple Silicon architecture"
   grep -F './scripts/verify.sh' "$workflow" >/dev/null || \
