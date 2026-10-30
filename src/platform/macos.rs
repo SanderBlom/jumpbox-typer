@@ -456,6 +456,35 @@ mod tests {
     use std::cell::Cell;
 
     #[test]
+    fn cancellation_during_physical_or_unicode_press_does_not_skip_releases() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let cancel = AtomicBool::new(false);
+        let sequence = key_sequence_with_modifiers(26, true, true);
+        let mut attempted = Vec::new();
+        post_sequence_with(&sequence, |transition, _| {
+            if transition.key_down {
+                cancel.store(true, Ordering::Relaxed);
+            }
+            attempted.push(transition);
+            Ok(())
+        })
+        .unwrap();
+        assert!(cancel.load(Ordering::Relaxed));
+        assert_eq!(attempted, sequence);
+
+        cancel.store(false, Ordering::Relaxed);
+        let mut attempted = Vec::new();
+        post_unicode_with(&[0xd83d, 0xde80], |down, _| {
+            cancel.store(true, Ordering::Relaxed);
+            attempted.push(down);
+            Ok(())
+        })
+        .unwrap();
+        assert!(cancel.load(Ordering::Relaxed));
+        assert_eq!(attempted, [true, false]);
+    }
+
+    #[test]
     fn missing_posting_access_reports_macos_readiness_without_linux_concepts() {
         let check = build_system_check(false, true);
 
