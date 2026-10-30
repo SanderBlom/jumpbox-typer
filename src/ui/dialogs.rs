@@ -2,7 +2,7 @@ use crate::types::{APP_ID, SystemCheck, SystemCheckItem};
 use crate::ui::widgets::system_check_row;
 use adw::prelude::*;
 use adw::{AboutWindow, ApplicationWindow};
-use gtk::{Align, Box as GtkBox, Button, Label, Orientation};
+use gtk::{Align, Box as GtkBox, Button, Label, Orientation, glib};
 
 pub fn show_about_window(parent: &ApplicationWindow) {
     let about = AboutWindow::builder()
@@ -19,6 +19,7 @@ pub fn show_about_window(parent: &ApplicationWindow) {
         .issue_url("https://github.com/SanderBlom/jumpbox-typer/issues")
         .developers(["GPT-5.4 model"])
         .build();
+    about.set_application(parent.application().as_ref());
 
     about.add_credit_section(
         Some("Acknowledgements"),
@@ -41,6 +42,7 @@ pub fn show_system_check_popup(parent: &ApplicationWindow, check: Option<SystemC
         .default_width(640)
         .default_height(420)
         .build();
+    popup.set_application(parent.application().as_ref());
 
     let body = GtkBox::new(Orientation::Vertical, 12);
     body.set_margin_top(16);
@@ -63,27 +65,32 @@ pub fn show_system_check_popup(parent: &ApplicationWindow, check: Option<SystemC
         } else {
             "Everything looks ready."
         });
-        rebuild_check_rows(&rows, &check.items);
+        rebuild_check_rows(&rows, &check.items, &popup);
     } else {
         summary.set_text("Running system checks...");
     }
 
     let close = Button::with_label("Close");
-    let popup_clone = popup.clone();
-    close.connect_clicked(move |_| popup_clone.close());
+    close.connect_clicked(glib::clone!(
+        #[weak]
+        popup,
+        move |_| popup.close()
+    ));
     body.append(&close);
 
     popup.set_child(Some(&body));
     popup.present();
 }
 
-pub fn show_check_help(item: &SystemCheckItem) {
+pub fn show_check_help(parent: &gtk::Window, item: &SystemCheckItem) {
     let dialog = gtk::Window::builder()
+        .transient_for(parent)
         .modal(true)
         .title(&item.title)
         .default_width(520)
         .default_height(220)
         .build();
+    dialog.set_application(parent.application().as_ref());
 
     let body = GtkBox::new(Orientation::Vertical, 12);
     body.set_margin_top(16);
@@ -101,8 +108,11 @@ pub fn show_check_help(item: &SystemCheckItem) {
     text.set_wrap_mode(gtk::pango::WrapMode::WordChar);
 
     let close = Button::with_label("Close");
-    let dialog_clone = dialog.clone();
-    close.connect_clicked(move |_| dialog_clone.close());
+    close.connect_clicked(glib::clone!(
+        #[weak]
+        dialog,
+        move |_| dialog.close()
+    ));
 
     body.append(&title);
     body.append(&text);
@@ -112,12 +122,17 @@ pub fn show_check_help(item: &SystemCheckItem) {
     dialog.present();
 }
 
-fn rebuild_check_rows(group: &GtkBox, items: &[SystemCheckItem]) {
+fn rebuild_check_rows(group: &GtkBox, items: &[SystemCheckItem], parent: &gtk::Window) {
     while let Some(child) = group.first_child() {
         group.remove(&child);
     }
 
     for item in items {
-        group.append(&system_check_row(item, show_check_help));
+        let parent = parent.downgrade();
+        group.append(&system_check_row(item, move |item| {
+            if let Some(parent) = parent.upgrade() {
+                show_check_help(&parent, item);
+            }
+        }));
     }
 }

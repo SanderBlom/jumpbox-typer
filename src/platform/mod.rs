@@ -1,9 +1,16 @@
 use crate::types::{KeyboardLayout, SystemCheck};
 
-#[cfg(target_os = "linux")]
+// Linux's existing readiness/key-mapping tests are pure and can also run on
+// macOS. This does not execute its ydotool backend or claim Linux host coverage.
+#[cfg(any(target_os = "linux", test))]
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "macos")]
+mod macos_application;
+#[cfg(target_os = "macos")]
+pub(crate) use macos_application::install_dock_reopen;
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
 mod unsupported;
 
