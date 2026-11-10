@@ -68,6 +68,14 @@ fn close_dialog(app: &Application, parent: &ApplicationWindow, session: &Session
 // This is automated GTK/native-bridge regression coverage, not proof of real
 // macOS keyboard, application menu, Dock, or Accessibility behavior.
 pub(crate) fn run() {
+    #[cfg(target_os = "linux")]
+    if let Ok(id) = std::env::var("JUMPBOX_LIFECYCLE_REMOTE_APP_ID") {
+        let remote = gio::Application::builder().application_id(id).build();
+        remote.register(None::<&gio::Cancellable>).unwrap();
+        assert!(remote.is_remote(), "launcher must find the retained primary");
+        assert_eq!(remote.run_with_args::<&str>(&[]), glib::ExitCode::SUCCESS);
+        return;
+    }
     if let Err(error) = gtk::init() {
         if cfg!(target_os = "macos") {
             panic!("GTK initialization failed: {error}");
@@ -77,7 +85,15 @@ pub(crate) fn run() {
     }
     adw::init().unwrap();
     let app = Application::builder()
-        .flags(gio::ApplicationFlags::NON_UNIQUE)
+        .application_id(format!(
+            "app.jumpbox.typer.LifecycleTest.p{}",
+            std::process::id()
+        ))
+        .flags(if cfg!(target_os = "macos") {
+            gio::ApplicationFlags::NON_UNIQUE
+        } else {
+            gio::ApplicationFlags::FLAGS_NONE
+        })
         .build();
     let session = Rc::new(RefCell::new(None));
     let startup_session = Rc::clone(&session);
@@ -158,6 +174,17 @@ fn exercise(app: &Application, session: &Rc<Session>) {
     let window = &session.window;
     until(|| app.active_window().as_ref() == Some(window.upcast_ref()));
     let editor: TextView = find_widget(window.upcast_ref()).unwrap();
+    #[cfg(target_os = "linux")]
+    {
+        let menu_button: gtk::MenuButton = find_widget(window.upcast_ref()).unwrap();
+        let menu = menu_button.menu_model().unwrap();
+        for (index, action) in [(0, "app.close"), (1, "app.quit")] {
+            assert_eq!(
+                menu.item_attribute_value(index, "action", None).unwrap().str(),
+                Some(action)
+            );
+        }
+    }
     assert_eq!(
         editor.buffer().char_count(),
         0,
@@ -256,14 +283,32 @@ fn exercise(app: &Application, session: &Rc<Session>) {
     release_tx.send(()).unwrap();
     stopped_rx.recv_timeout(Duration::from_secs(2)).unwrap();
 
-    if !cfg!(target_os = "macos") {
-        // Linux still terminates after its last main window closes.
-        return;
-    }
     until(|| !window.is_visible());
     assert!(session.state.borrow().job.is_none());
     assert!(!app.is_action_enabled("close"));
     assert!(app.is_action_enabled("quit"));
+    #[cfg(target_os = "linux")]
+    {
+        // Launch a second process on the session bus, like the desktop entry.
+        // It must present the retained primary rather than create a new session.
+        let mut launcher = std::process::Command::new(std::env::current_exe().unwrap())
+            .env(
+                "JUMPBOX_LIFECYCLE_REMOTE_APP_ID",
+                app.application_id().unwrap(),
+            )
+            .spawn()
+            .unwrap();
+        until(|| launcher.try_wait().unwrap().is_some());
+        assert!(launcher.wait().unwrap().success());
+        until(|| window.is_visible());
+        assert_eq!(app.windows().len(), 1);
+        let buffer = editor.buffer();
+        assert_eq!(
+            buffer.text(&buffer.start_iter(), &buffer.end_iter(), true),
+            text
+        );
+        assert!(session.state.borrow().job.is_none());
+    }
     for _ in 0..3 {
         app.activate();
         until(|| window.is_visible());
@@ -299,6 +344,11 @@ fn exercise(app: &Application, session: &Rc<Session>) {
         };
         until(|| window.is_visible());
         assert_eq!(app.windows().len(), 1);
+    }
+    #[cfg(target_os = "linux")]
+    {
+        app.activate();
+        until(|| window.is_visible());
     }
     // An OCR result from a prior visible generation must not overwrite text,
     // even if it is delivered after the retained view has reopened.

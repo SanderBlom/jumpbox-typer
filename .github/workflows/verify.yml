@@ -42,11 +42,18 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr
+          sudo apt-get install --yes gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr xvfb xauth dbus-x11
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: brew install pkg-config gtk4 libadwaita tesseract librsvg
 
-      - name: Verify
+      - name: Verify Linux with a display and session bus
+        if: runner.os == 'Linux'
+        env:
+          GDK_BACKEND: x11
+        run: dbus-run-session -- xvfb-run -a ./scripts/verify.sh
+
+      - name: Verify macOS
+        if: runner.os == 'macOS'
         run: ./scripts/verify.sh

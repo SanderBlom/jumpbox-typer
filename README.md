@@ -26,6 +26,14 @@ See [BUILD.md](BUILD.md) for build and packaging notes.
 
 The app stores typing preferences in `~/.config/jumpbox-typer/config.txt` by default, or under `XDG_CONFIG_HOME` when set. If that file is missing, the built-in defaults are used.
 
+## Linux window lifecycle
+
+- Closing the main window (including **Ctrl+W**) safely stops typing and leaves the app running.
+- Launch Jumpbox Typer again from the desktop launcher or terminal to restore the same window and editor text. This requires a desktop session bus; typing does not resume automatically.
+- Use **Main Menu → Quit** or **Ctrl+Q** to exit. If the window is closed, reopen it first to access Quit.
+- Closing a dialog closes only that dialog, without stopping typing.
+- Editor text is kept only in memory while the app runs. Quit discards it without confirmation; a fresh launch starts empty.
+
 ## Safety
 
 The app sends real keystrokes to the focused window when the delay ends.
