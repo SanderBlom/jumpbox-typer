@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-
 pub const APP_ID: &str = "app.jumpbox.typer";
 pub const DEFAULT_DELAY_SECONDS: f64 = 5.0;
 #[cfg(target_os = "macos")]
@@ -36,7 +33,7 @@ impl KeyboardLayout {
 
 #[derive(Debug)]
 pub struct AppState {
-    pub cancel: Option<Arc<AtomicBool>>,
+    pub job: Option<crate::typing::TypingJob>,
     pub progress: usize,
     pub total: usize,
     pub can_type: bool,
@@ -72,6 +69,7 @@ pub enum UiEvent {
         total: usize,
     },
     OcrFinished {
+        generation: u64,
         status: String,
         text: Option<String>,
     },

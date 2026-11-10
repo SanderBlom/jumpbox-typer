@@ -150,7 +150,20 @@ Complete these manual checks after automated verification:
 
 6. Test a real remote-session client before you claim compatibility.
 
+7. Check real Command-Q and Command-W with the editor and each settings control focused. Check native application-menu Quit, File → Close, normal Dock Quit, and both commands from About, system checks, and check help. Close a dialog while typing harmless text: only the dialog should close.
+
+8. Use the red close control and File → Close during the start delay and active typing. Wait for Close to finish and confirm no further typing or stuck modifiers. Click the Dock icon: the same text should return in one window, with typing stopped. Repeat Close/reopen, then quit with no window open. Relaunch and confirm the editor is empty.
+
+The main-thread GTK tests exercise actions and the Dock-reopen callback without sending keys or requesting permissions. They do not prove real keyboard, menu, or Dock event dispatch; the installed-app checks above are still required.
+
 Record the macOS version, hardware, application revision, client version, input source, test text, and observed limits.
+
+## Keyboard shortcuts
+
+- **Command-Q**, application-menu **Quit**, and normal Dock **Quit** share the same shutdown policy. An active typing job finishes its current key-release attempts before the application exits. There is no text-loss prompt.
+- **Command-W** and **File → Close** close the focused window, just like its close control. Closing a dialog leaves its parent and typing job alone.
+- Closing the main window safely stops typing and keeps the macOS application running. The Dock icon restores the single main window with its text; it does not resume typing.
+- Editor text stays in memory only while the application runs. Quit discards it; the next launch starts empty. Typing preferences continue to be saved separately.
 
 ## Configuration
 
