@@ -31,7 +31,10 @@ jobs:
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
           tag="${GITHUB_REF_NAME#v}"
-          test "$tag" = "$version"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Release tag '$GITHUB_REF_NAME' does not match Cargo version '$version'. Bump Cargo.toml and Cargo.lock before tagging."
+            exit 1
+          fi
 
       - name: Run tests
         run: cargo test --all-targets
@@ -51,7 +54,7 @@ jobs:
 
   macos-package:
     name: macOS .dmg
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
 
     steps:
@@ -73,7 +76,10 @@ jobs:
         run: |
           version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
           tag="${GITHUB_REF_NAME#v}"
-          test "$tag" = "$version"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Release tag '$GITHUB_REF_NAME' does not match Cargo version '$version'. Bump Cargo.toml and Cargo.lock before tagging."
+            exit 1
+          fi
 
       - name: Run tests
         run: cargo test --all-targets

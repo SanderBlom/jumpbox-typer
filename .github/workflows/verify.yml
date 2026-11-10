@@ -23,8 +23,8 @@ jobs:
         include:
           - name: Linux
             os: ubuntu-24.04
-          - name: macOS 14 Apple Silicon
-            os: macos-14
+          - name: macOS 15 Apple Silicon
+            os: macos-15
 
     steps:
       - uses: actions/checkout@v7

@@ -79,7 +79,7 @@ Run the same complete feedback loop used by continuous integration:
 ./scripts/verify.sh
 ```
 
-The script checks Rust formatting, runs all-target tests and compilation checks, runs Clippy with warnings denied, tests the packaging workflows, and creates the host release artifact. Run it on both Linux and macOS when reproducing cross-platform verification. The repository workflow runs it on Ubuntu 24.04 and an Apple Silicon macOS 14 runner.
+The script checks Rust formatting, runs all-target tests and compilation checks, runs Clippy with warnings denied, tests the packaging workflows, and creates the host release artifact. Run it on both Linux and macOS when reproducing cross-platform verification. The repository workflow runs it on Ubuntu 24.04 and an Apple Silicon macOS 15 runner.
 
 On Linux, the final build proves that the existing Linux executable artifact can still be produced. On macOS, `build.sh` validates bundle metadata with `plutil` and verifies the local ad-hoc signature with `codesign`. Automated tests do not request keyboard-event permission or send system-wide keystrokes.
 
@@ -134,6 +134,13 @@ macOS can require Accessibility permission again after you replace an ad-hoc sig
 ## GitHub releases
 
 Publishing a GitHub release runs [release-packages.yml](.github/workflows/release-packages.yml).
+
+Before publishing, update the package version in both `Cargo.toml` and `Cargo.lock`
+and tag that commit with the same version (an optional `v` prefix is accepted).
+For example, version `1.0.0-beta-2` must use tag `1.0.0-beta-2` or
+`v1.0.0-beta-2`. The workflow attaches packages to the published release; it does
+not create the release itself. macOS packaging runs on an Apple Silicon macOS 15
+runner; the retired `macos-14` runner is not used.
 
 The release workflow builds and uploads:
 
