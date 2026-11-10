@@ -42,7 +42,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr xvfb xauth dbus-x11
+          sudo apt-get install --yes gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr xvfb xauth dbus-daemon
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'

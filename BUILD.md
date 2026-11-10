@@ -85,11 +85,15 @@ On Linux, the final build proves that the existing Linux executable artifact can
 
 Linux CI runs verification under Xvfb with a private D-Bus session so the GTK
 lifecycle scenarios execute rather than skip. To exercise the same checks locally,
-install `xvfb`, `xauth`, and `dbus-x11`, then run:
+install `xvfb`, `xauth`, and `dbus-daemon`, then run:
 
 ```bash
 dbus-run-session -- xvfb-run -a env GDK_BACKEND=x11 ./scripts/verify.sh
 ```
+
+X11 is used only for the headless test display, not as a requirement for running
+the app on a Wayland desktop. D-Bus is display-server independent. This CI run
+does not validate Wayland-specific compositor behavior.
 
 Finder-launched GUI and OCR behavior still require manual verification because Finder uses the installed application identity and can provide a different environment from a terminal launch.
 
