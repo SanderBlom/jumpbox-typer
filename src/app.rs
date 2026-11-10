@@ -101,9 +101,13 @@ fn install_actions(app: &Application, session: Rc<RefCell<Option<Rc<Session>>>>)
                 session.transition.get(),
                 Transition::Open | Transition::Closed
             ) {
+                let reopening = session.transition.get() == Transition::Closed;
                 session.transition.set(Transition::Open);
                 session.window.set_sensitive(true);
                 session.window.present();
+                if reopening {
+                    session.check(AccessRequest::CheckOnly);
+                }
             }
         } else {
             activate_session.borrow_mut().replace(build_ui(app));
