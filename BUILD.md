@@ -83,17 +83,20 @@ The script checks Rust formatting, runs all-target tests and compilation checks,
 
 On Linux, the final build proves that the existing Linux executable artifact can still be produced. On macOS, `build.sh` validates bundle metadata with `plutil` and verifies the local ad-hoc signature with `codesign`. Automated tests do not request keyboard-event permission or send system-wide keystrokes.
 
-Linux CI runs verification under Xvfb with a private D-Bus session so the GTK
-lifecycle scenarios execute rather than skip. To exercise the same checks locally,
-install `xvfb`, `xauth`, and `dbus-daemon`, then run:
+Linux CI runs verification under headless Cage/wlroots with software rendering and a
+private D-Bus session. GTK is forced to use Wayland, and missing displays or an
+unexpected backend fail the lifecycle tests instead of skipping them. To exercise
+the same checks locally, install `cage` and `dbus-daemon`, then run:
 
 ```bash
-dbus-run-session -- xvfb-run -a env GDK_BACKEND=x11 ./scripts/verify.sh
+./scripts/with-headless-wayland.sh ./scripts/verify.sh
 ```
 
-X11 is used only for the headless test display, not as a requirement for running
-the app on a Wayland desktop. D-Bus is display-server independent. This CI run
-does not validate Wayland-specific compositor behavior.
+No X11 or XWayland server is used. The scenarios cover GTK window lifecycle and
+single-instance D-Bus reopening on Wayland, without emitting real keystrokes.
+Cage activates test windows automatically; this does not replace
+manual acceptance on Ubuntu's GNOME/Mutter desktop, including focus policies,
+clipboard/OCR integration, and typing through `ydotool`.
 
 Finder-launched GUI and OCR behavior still require manual verification because Finder uses the installed application identity and can provide a different environment from a terminal launch.
 

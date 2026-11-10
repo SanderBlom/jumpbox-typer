@@ -80,11 +80,18 @@ pub(crate) fn run() {
         return;
     }
     if let Err(error) = gtk::init() {
-        if cfg!(target_os = "macos") {
+        if cfg!(target_os = "macos") || std::env::var_os("JUMPBOX_REQUIRE_WAYLAND").is_some() {
             panic!("GTK initialization failed: {error}");
         }
         eprintln!("SKIP application shortcut/lifecycle tests: {error} (display required)");
         return;
+    }
+    if std::env::var_os("JUMPBOX_REQUIRE_WAYLAND").is_some() {
+        assert_eq!(
+            gdk::Display::default().unwrap().type_().name(),
+            "GdkWaylandDisplay",
+            "Wayland CI must not fall back to another display backend"
+        );
     }
     adw::init().unwrap();
     let app = Application::builder()
