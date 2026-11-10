@@ -67,8 +67,58 @@ test_ci_covers_supported_hosts() {
     fail "macOS CI does not enforce the supported Apple Silicon architecture"
   grep -F './scripts/verify.sh' "$workflow" >/dev/null || \
     fail "CI does not use the reproducible verification entrypoint"
+  grep -F './scripts/with-headless-wayland.sh ./scripts/verify.sh' "$workflow" >/dev/null || \
+    fail "Linux CI must exercise the Wayland backend"
+  if grep -E 'xvfb|GDK_BACKEND: x11' "$workflow" >/dev/null; then
+    fail "Linux CI must not substitute X11 for Wayland"
+  fi
+}
+
+test_wayland_runner_propagates_failures_and_cleans_up() {
+  test_tmp=$(mktemp -d)
+  trap 'rm -rf "$test_tmp"' EXIT HUP INT TERM
+  fake_bin="$test_tmp/bin"
+  mkdir -p "$fake_bin" "$test_tmp/runtime"
+  printf '%s\n' \
+    '#!/usr/bin/env sh' \
+    '[ "$1" = -- ] || exit 99' \
+    'shift' \
+    'exec "$@"' >"$fake_bin/dbus-run-session"
+  # Emulate older Cage versions that ignore the application's exit status.
+  printf '%s\n' \
+    '#!/usr/bin/env sh' \
+    '[ "$1" = -- ] || exit 99' \
+    'shift' \
+    '"$@" || true' >"$fake_bin/cage"
+  chmod +x "$fake_bin/dbus-run-session" "$fake_bin/cage"
+
+  PATH="$fake_bin:$PATH" TMPDIR="$test_tmp/runtime" \
+    ./scripts/with-headless-wayland.sh sh -c '
+      [ "$GDK_BACKEND" = wayland ] &&
+      [ "$GSK_RENDERER" = cairo ] &&
+      [ "$WLR_BACKENDS" = headless ] &&
+      [ "$WLR_RENDERER" = pixman ] &&
+      [ "$JUMPBOX_REQUIRE_WAYLAND" = 1 ] &&
+      [ -z "${DISPLAY:-}" ] &&
+      [ -d "$XDG_RUNTIME_DIR" ]
+    ' || fail "Wayland runner did not configure an isolated software display"
+
+  result=0
+  PATH="$fake_bin:$PATH" TMPDIR="$test_tmp/runtime" \
+    ./scripts/with-headless-wayland.sh sh -c 'exit 7' || result=$?
+  [ "$result" -eq 7 ] || fail "Wayland runner swallowed command failure"
+
+  printf '%s\n' '#!/usr/bin/env sh' 'exit 0' >"$fake_bin/cage"
+  if PATH="$fake_bin:$PATH" TMPDIR="$test_tmp/runtime" \
+    ./scripts/with-headless-wayland.sh true 2>"$test_tmp/error.log"; then
+    fail "Wayland runner accepted an unexecuted command"
+  fi
+  grep -F 'did not complete' "$test_tmp/error.log" >/dev/null || \
+    fail "Wayland startup failure did not explain the missing test run"
+  [ -z "$(ls -A "$test_tmp/runtime")" ] || fail "Wayland runner leaked runtime directories"
 }
 
 test_verification_runs_complete_feedback_loop
 test_ci_covers_supported_hosts
+test_wayland_runner_propagates_failures_and_cleans_up
 echo "verification tests passed"

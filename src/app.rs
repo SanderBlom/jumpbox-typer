@@ -237,14 +237,8 @@ impl Session {
                             window.destroy();
                         }
                     }
-                    if cfg!(target_os = "macos") {
-                        self.window.set_visible(false);
-                        self.transition.set(Transition::Closed);
-                    } else {
-                        self.window.destroy();
-                        app.quit();
-                        return true;
-                    }
+                    self.window.set_visible(false);
+                    self.transition.set(Transition::Closed);
                 }
             }
             Transition::Quitting => {
@@ -367,6 +361,19 @@ fn build_ui(app: &Application) -> Rc<Session> {
         .build();
     header_bar.pack_end(&about_button);
 
+    #[cfg(target_os = "linux")]
+    {
+        let menu = gtk::gio::Menu::new();
+        menu.append(Some("_Close Window"), Some("app.close"));
+        menu.append(Some("_Quit"), Some("app.quit"));
+        let menu_button = gtk::MenuButton::builder()
+            .icon_name("open-menu-symbolic")
+            .tooltip_text("Main Menu")
+            .menu_model(&menu)
+            .build();
+        header_bar.pack_end(&menu_button);
+    }
+
     {
         about_button.connect_clicked(glib::clone!(
             #[weak]
@@ -446,11 +453,9 @@ fn build_ui(app: &Application) -> Rc<Session> {
         transition: Cell::new(Transition::Open),
         generation: Cell::new(0),
         poll: RefCell::new(None),
-        hold: RefCell::new(if cfg!(target_os = "macos") {
-            Some(app.hold())
-        } else {
-            None
-        }),
+        // Keep the session alive while its retained window is hidden. A second
+        // launcher invocation activates this same application through GApplication.
+        hold: RefCell::new(Some(app.hold())),
         background: RefCell::new(Vec::new()),
         clipboard: RefCell::new(None),
         check_pending: Cell::new(false),
