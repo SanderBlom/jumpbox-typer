@@ -16,13 +16,32 @@ For macOS setup and support information, see [README.macos.md](README.macos.md).
 
 ## Install
 
-Use the local installer:
+Download the installer for your platform from the [latest published release](https://github.com/SanderBlom/jumpbox-typer/releases) (including beta releases).
+
+### Debian / Ubuntu (amd64)
+
+1. Download the `.deb` file from the newest release's **Assets** section.
+2. Open a terminal in the folder containing the downloaded package and install it:
 
 ```bash
-./install.sh
+sudo apt install ./jumpbox-typer_*_amd64.deb
 ```
 
-See [BUILD.md](BUILD.md) for build and packaging notes.
+3. Launch **Jumpbox Typer** from your application launcher, or run `jumpbox-typer`.
+
+Use the same command with a newer downloaded package to upgrade. `apt` installs the package's declared dependencies as needed.
+
+The `.deb` is built on Ubuntu 26.04. Older Debian or Ubuntu versions may not provide compatible GTK 4 and libadwaita libraries.
+
+### macOS (Apple Silicon)
+
+Download the `.dmg` file from the same release, open it, and drag **Jumpbox Typer** into **Applications**.
+
+The macOS bundle still requires Homebrew libraries and is ad-hoc signed, not notarized. See [README.macos.md](README.macos.md) for dependencies and keyboard-event permissions.
+
+### Build from source
+
+Release packages do not require cloning this repository or running `install.sh`. For source builds and the local installer, see [BUILD.md](BUILD.md).
 
 The app stores typing preferences in `~/.config/jumpbox-typer/config.txt` by default, or under `XDG_CONFIG_HOME` when set. If that file is missing, the built-in defaults are used.
 
