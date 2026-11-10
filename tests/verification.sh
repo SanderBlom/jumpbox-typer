@@ -53,7 +53,12 @@ test_ci_covers_supported_hosts() {
 
   [ -f "$workflow" ] || fail "verification workflow is missing"
   grep -F 'ubuntu-24.04' "$workflow" >/dev/null || fail "Linux CI host is missing"
-  grep -F 'macos-14' "$workflow" >/dev/null || fail "macOS 14 CI host is missing"
+  grep -F 'macos-15' "$workflow" >/dev/null || fail "macOS 15 CI host is missing"
+  grep -F 'runs-on: macos-15' .github/workflows/release-packages.yml >/dev/null || \
+    fail "macOS release packaging must use a supported Apple Silicon runner"
+  if grep -F 'macos-14' "$workflow" .github/workflows/release-packages.yml >/dev/null; then
+    fail "workflows must not use the retired macOS 14 runner"
+  fi
   grep -F 'branches: [main]' "$workflow" >/dev/null || \
     fail "push verification should only run on main"
   grep -F 'cancel-in-progress: true' "$workflow" >/dev/null || \
