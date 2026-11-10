@@ -72,7 +72,10 @@ pub(crate) fn run() {
     if let Ok(id) = std::env::var("JUMPBOX_LIFECYCLE_REMOTE_APP_ID") {
         let remote = gio::Application::builder().application_id(id).build();
         remote.register(None::<&gio::Cancellable>).unwrap();
-        assert!(remote.is_remote(), "launcher must find the retained primary");
+        assert!(
+            remote.is_remote(),
+            "launcher must find the retained primary"
+        );
         assert_eq!(remote.run_with_args::<&str>(&[]), glib::ExitCode::SUCCESS);
         return;
     }
@@ -180,7 +183,9 @@ fn exercise(app: &Application, session: &Rc<Session>) {
         let menu = menu_button.menu_model().unwrap();
         for (index, action) in [(0, "app.close"), (1, "app.quit")] {
             assert_eq!(
-                menu.item_attribute_value(index, "action", None).unwrap().str(),
+                menu.item_attribute_value(index, "action", None)
+                    .unwrap()
+                    .str(),
                 Some(action)
             );
         }
